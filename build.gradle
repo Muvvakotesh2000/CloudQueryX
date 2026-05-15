@@ -1,0 +1,129 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'antlr'
+    id 'com.google.protobuf' version '0.9.4'
+}
+
+group = 'com.cloudqueryx'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    antlr 'org.antlr:antlr4:4.13.1'
+    implementation 'org.antlr:antlr4-runtime:4.13.1'
+
+    implementation 'io.grpc:grpc-netty-shaded:1.62.2'
+    implementation 'io.grpc:grpc-protobuf:1.62.2'
+    implementation 'io.grpc:grpc-stub:1.62.2'
+    implementation 'com.google.protobuf:protobuf-java:3.25.3'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+
+    implementation 'com.google.guava:guava:33.1.0-jre'
+    implementation 'org.slf4j:slf4j-api:2.0.12'
+    implementation 'ch.qos.logback:logback-classic:1.5.3'
+    implementation 'org.jline:jline:3.25.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.0'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.0'
+
+    implementation 'org.postgresql:postgresql:42.7.3'
+    implementation 'com.zaxxer:HikariCP:5.1.0'
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+    // Embedding model (local ONNX inference)
+    implementation 'com.microsoft.onnxruntime:onnxruntime:1.17.0'
+    implementation 'ai.djl.huggingface:tokenizers:0.27.0'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'org.assertj:assertj-core:3.25.3'
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'com.h2database:h2:2.2.224'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'com.cloudqueryx.CloudQueryXServer'
+    applicationDefaultJvmArgs = ['-Djava.net.preferIPv6Addresses=true']
+}
+
+generateGrammarSource {
+    arguments += ['-visitor', '-listener']
+    outputDirectory = file("${buildDir}/generated-src/antlr/main")
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.25.3'
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.62.2'
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += "${buildDir}/generated-src/antlr/main"
+            srcDirs += "${buildDir}/generated/source/proto/main/java"
+            srcDirs += "${buildDir}/generated/source/proto/main/grpc"
+        }
+    }
+}
+
+compileJava {
+    dependsOn generateGrammarSource, generateProto
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        showStandardStreams = true
+    }
+}
+
+tasks.register('runCli', JavaExec) {
+    mainClass = 'com.cloudqueryx.cli.CloudQueryXCli'
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+}
+
+tasks.register('runWeb', JavaExec) {
+    mainClass = 'com.cloudqueryx.CloudQueryXServer'
+    classpath = sourceSets.main.runtimeClasspath
+    args = ['web', '8080']
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': 'com.cloudqueryx.CloudQueryXServer',
+            'Implementation-Title': 'CloudQueryX',
+            'Implementation-Version': version
+        )
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}

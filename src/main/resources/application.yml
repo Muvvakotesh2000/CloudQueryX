@@ -1,0 +1,44 @@
+cloudqueryx:
+  mode: standalone   # standalone | coordinator | worker
+
+  coordinator:
+    host: 0.0.0.0
+    port: 9090
+    query-timeout-seconds: 300
+    max-concurrent-queries: 100
+
+  worker:
+    host: 0.0.0.0
+    port: 9091
+    coordinator-host: localhost
+    coordinator-port: 9090
+    heartbeat-interval-seconds: 10
+    task-threads: 4
+    memory-limit-mb: 1024
+
+  optimizer:
+    enable-predicate-pushdown: true
+    enable-join-reorder: true
+    enable-projection-pruning: true
+    join-reorder-threshold: 10
+    cost-model: default
+
+  execution:
+    batch-size: 1024
+    spill-to-disk: false
+    spill-directory: /tmp/cloudqueryx/spill
+    max-memory-per-query-mb: 512
+
+  storage:
+    data-directory: data/
+    buffer-pool-size-mb: 256
+    page-size-kb: 8
+
+  cluster:
+    node-id: auto
+    discovery: static
+    static-nodes:
+      - host: localhost
+        port: 9091
+      - host: localhost
+        port: 9092

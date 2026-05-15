@@ -1,0 +1,39 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime
+*.log
+logs/
+data/
+tmp/
+
+# Environment
+.env
+.env.local
+.env.production
+*.pid
+
+# Claude Code
+.claude/
+
+# Models (large binary files)
+models/
+
+# Test data
+test-data.json

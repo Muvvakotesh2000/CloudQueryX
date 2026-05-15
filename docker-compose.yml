@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # Web application mode (default)
+  cloudqueryx-web:
+    build: .
+    command: ["web", "8080"]
+    ports:
+      - "8080:8080"
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx2g -XX:+UseG1GC
+      - CLOUDQUERYX_PORT=8080
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - cloudqueryx
+
+  # Distributed mode: coordinator + workers
+  coordinator:
+    build: .
+    command: ["coordinator", "9090"]
+    ports:
+      - "9090:9090"
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx2g -XX:+UseG1GC
+    profiles:
+      - distributed
+    networks:
+      - cloudqueryx
+    healthcheck:
+      test: ["CMD", "java", "-version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker-1:
+    build: .
+    command: ["worker", "9091", "coordinator", "9090"]
+    depends_on:
+      - coordinator
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx1g -XX:+UseG1GC
+    profiles:
+      - distributed
+    networks:
+      - cloudqueryx
+
+  worker-2:
+    build: .
+    command: ["worker", "9092", "coordinator", "9090"]
+    depends_on:
+      - coordinator
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx1g -XX:+UseG1GC
+    profiles:
+      - distributed
+    networks:
+      - cloudqueryx
+
+  worker-3:
+    build: .
+    command: ["worker", "9093", "coordinator", "9090"]
+    depends_on:
+      - coordinator
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx1g -XX:+UseG1GC
+    profiles:
+      - distributed
+    networks:
+      - cloudqueryx
+
+  worker-4:
+    build: .
+    command: ["worker", "9094", "coordinator", "9090"]
+    depends_on:
+      - coordinator
+    environment:
+      - JAVA_OPTS=-Xms256m -Xmx1g -XX:+UseG1GC
+    profiles:
+      - distributed
+    networks:
+      - cloudqueryx
+
+networks:
+  cloudqueryx:
+    driver: bridge

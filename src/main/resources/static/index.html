@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CloudQueryX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LANDING PAGE
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="landing-view">
+  <nav class="landing-nav">
+    <div class="nav-container">
+      <a href="/" class="logo-mark">CloudQueryX</a>
+      <div class="nav-links">
+        <a href="#capabilities">Capabilities</a>
+        <a href="#architecture">Architecture</a>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-text" onclick="showAuth('login')">Log in</button>
+        <button class="btn-primary-sm" onclick="showAuth('signup')">Get Started</button>
+      </div>
+      <button class="mobile-toggle" onclick="toggleMobileMenu()">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobile-menu">
+      <a href="#capabilities" onclick="toggleMobileMenu()">Capabilities</a>
+      <a href="#architecture" onclick="toggleMobileMenu()">Architecture</a>
+      <button class="btn-text" onclick="showAuth('login'); toggleMobileMenu()">Log in</button>
+      <button class="btn-primary-sm" onclick="showAuth('signup'); toggleMobileMenu()">Get Started</button>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-content">
+      <p class="hero-tag">Context Memory API for AI Applications</p>
+      <h1>Store and retrieve context for any AI application.</h1>
+      <p class="hero-desc">One API to store memories, documents, knowledge graphs, and events. Multi-signal retrieval with Reciprocal Rank Fusion returns token-budgeted context bundles ready for Claude, GPT, Gemini, or local models.</p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="showAuth('signup')">Get Started Free</button>
+        <button class="btn-outline" onclick="showAuth('login')">Log in</button>
+      </div>
+    </div>
+    <div class="hero-code">
+      <div class="hero-code-header">
+        <span class="hero-code-dot r"></span>
+        <span class="hero-code-dot y"></span>
+        <span class="hero-code-dot g"></span>
+        <span>store_memory.py</span>
+      </div>
+      <pre><span class="hl-kw">import</span> requests
+
+response = requests.<span class="hl-fn">post</span>(
+    <span class="hl-str">"https://your-instance/api/v1/store"</span>,
+    headers={<span class="hl-str">"Authorization"</span>: <span class="hl-str">"Bearer cqx_..."</span>},
+    json={
+        <span class="hl-str">"type"</span>: <span class="hl-str">"memory"</span>,
+        <span class="hl-str">"memoryType"</span>: <span class="hl-str">"FACT"</span>,
+        <span class="hl-str">"content"</span>: <span class="hl-str">"User prefers dark mode"</span>,
+        <span class="hl-str">"importance"</span>: <span class="hl-num">0.9</span>
+    }
+)
+
+<span class="hl-comment"># Retrieve context for an LLM call</span>
+bundle = requests.<span class="hl-fn">post</span>(
+    <span class="hl-str">"https://your-instance/api/v1/context/build"</span>,
+    headers={<span class="hl-str">"Authorization"</span>: <span class="hl-str">"Bearer cqx_..."</span>},
+    json={
+        <span class="hl-str">"query"</span>: <span class="hl-str">"What are the user's preferences?"</span>,
+        <span class="hl-str">"tokenBudget"</span>: <span class="hl-num">4000</span>
+    }
+).<span class="hl-fn">json</span>()</pre>
+    </div>
+  </section>
+
+  <section class="capabilities" id="capabilities">
+    <div class="section-inner">
+      <h2>Built for Developers</h2>
+      <div class="cap-grid">
+        <div class="cap-item">
+          <h3>Store Any Context</h3>
+          <p>One endpoint handles memories, documents, knowledge graph entities, relationships, and timeline events. Automatic chunking, embedding, and indexing.</p>
+        </div>
+        <div class="cap-item">
+          <h3>Multi-Signal Retrieval</h3>
+          <p>Five retrieval signals — vector similarity, BM25 full-text, knowledge graph traversal, scored memory, and behavioral events — merged through Reciprocal Rank Fusion.</p>
+        </div>
+        <div class="cap-item">
+          <h3>Token-Budgeted Bundles</h3>
+          <p>Context bundles fit your model's token window. The optimizer ranks, compresses, and formats retrieved items. No more truncation or wasted context.</p>
+        </div>
+        <div class="cap-item">
+          <h3>Knowledge Graph</h3>
+          <p>Store entities and relationships with automatic traversal. Graph context feeds into retrieval — related entities boost recall without explicit joins.</p>
+        </div>
+        <div class="cap-item">
+          <h3>Webhooks & Events</h3>
+          <p>Track user behavior and system events. Get notified when context changes. Build reactive pipelines around your AI application's memory.</p>
+        </div>
+        <div class="cap-item">
+          <h3>One API Key</h3>
+          <p>Generate a scoped API key. Authenticate with a Bearer token. All endpoints — store, recall, retrieve, build — are available immediately. No setup complexity.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="architecture-section" id="architecture">
+    <div class="section-inner">
+      <h2>Architecture</h2>
+      <div class="arch-flow">
+        <div class="arch-step">
+          <span class="arch-label">Your Application</span>
+          <span class="arch-sub">Chatbot, Agent, Copilot, RAG pipeline</span>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-step highlight">
+          <span class="arch-label">CloudQueryX Context Engine</span>
+          <div class="arch-tags">
+            <span>Store</span><span>Recall</span><span>Relate</span><span>Retrieve</span><span>Bundle</span>
+          </div>
+          <span class="arch-sub">RRF Fusion &middot; Conflict Resolution &middot; Token Budgeting</span>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-signals">
+          <span>Vectors</span>
+          <span>Memories</span>
+          <span>Graph</span>
+          <span>Full-Text</span>
+          <span>Events</span>
+        </div>
+        <div class="arch-connector"></div>
+        <div class="arch-step">
+          <span class="arch-label">PostgreSQL + pgvector</span>
+          <span class="arch-sub">Single database, no external infrastructure</span>
+        </div>
+      </div>
+      <div class="arch-stack">
+        <p>Java 17 &middot; ANTLR4 &middot; gRPC &middot; ONNX Runtime &middot; HikariCP &middot; PostgreSQL</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="section-inner footer-row">
+      <span class="logo-mark">CloudQueryX</span>
+      <span class="footer-text">Open source under MIT License</span>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     AUTH MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="auth-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeAuth()">&times;</button>
+    <h2 id="auth-title">Log in to CloudQueryX</h2>
+    <p class="auth-sub" id="auth-subtitle">Access your context databases</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Log In</button>
+      <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+    <form id="login-form" onsubmit="return handleLogin(event)">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="you@company.com" required>
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Enter your password" required>
+      <button type="submit" class="btn-primary full">Log In</button>
+      <div id="login-error" class="form-error"></div>
+    </form>
+    <form id="signup-form" style="display:none" onsubmit="return handleSignup(event)">
+      <label>Email</label>
+      <input type="email" id="signup-email" placeholder="you@company.com" required>
+      <label>Password</label>
+      <input type="password" id="signup-password" placeholder="Minimum 8 characters" required minlength="8">
+      <button type="submit" class="btn-primary full">Create Account</button>
+      <div id="signup-error" class="form-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DASHBOARD
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="app-view" style="display:none">
+  <div class="app-layout">
+
+    <!-- Mobile header -->
+    <div class="mobile-header">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
+      </button>
+      <span class="logo-mark">CloudQueryX</span>
+    </div>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <a class="logo-mark" href="/" onclick="event.preventDefault(); backToLanding();">CloudQueryX</a>
+        <span class="sidebar-db-name" id="sidebar-db-name"></span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="sidebar-item active" data-section="overview">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+          Overview
+        </a>
+        <a class="sidebar-item" data-section="playground">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l3-3-3-3M8 12h4"/></svg>
+          Playground
+        </a>
+
+        <div class="sidebar-group-label">Data</div>
+        <a class="sidebar-item" data-section="explorer">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="5" cy="4" r="0.5" fill="currentColor"/><circle cx="5" cy="8" r="0.5" fill="currentColor"/><circle cx="5" cy="12" r="0.5" fill="currentColor"/></svg>
+          Data Explorer
+        </a>
+        <a class="sidebar-item" data-section="graph">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><path d="M6 4h4M5.5 5.5L7 10.5M10.5 5.5L9 10.5"/></svg>
+          Knowledge Graph
+        </a>
+
+        <div class="sidebar-group-label">Developer</div>
+        <a class="sidebar-item" data-section="api-reference">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2L7 14"/></svg>
+          API Reference
+        </a>
+        <a class="sidebar-item" data-section="api-keys">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="8" r="3"/><path d="M8 8h6M12 6v4"/></svg>
+          API Keys
+        </a>
+        <a class="sidebar-item" data-section="webhooks">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4l6 4 6-4M2 4v8l6 4 6-4V4"/></svg>
+          Webhooks
+        </a>
+
+        <div class="sidebar-group-label">System</div>
+        <a class="sidebar-item" data-section="settings">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M2.9 13.1l1.4-1.4M11.7 4.3l1.4-1.4"/></svg>
+          Settings
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="sidebar-email" id="sidebar-email"></span>
+        <div class="sidebar-footer-row">
+          <span id="health-dot" class="health-indicator" title="Checking...">
+            <span class="dot"></span>
+            <span class="health-text">Checking</span>
+          </span>
+          <button class="btn-text-light" onclick="logout()">Log out</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content area -->
+    <main class="content-area">
+      <!-- No-DB state -->
+      <div id="no-db-view" class="section-page">
+        <div class="empty-state">
+          <h2>Preparing your context database</h2>
+          <p>CloudQueryX creates an isolated context database for each user.</p>
+        </div>
+      </div>
+
+      <!-- Main sections -->
+      <div id="db-view" style="display:none">
+
+        <!-- ── OVERVIEW ─────────────────────────────────────── -->
+        <div id="section-overview" class="section active-section">
+          <div class="section-page">
+            <div class="section-header">
+              <h2>Overview</h2>
+              <p>Your context database at a glance</p>
+            </div>
+            <div class="stats-grid" id="overview-stats"></div>
+            <div class="overview-grid">
+              <div class="card">
+                <h3>Quick Actions</h3>
+                <div class="quick-actions">
+                  <div class="quick-action" onclick="showSection('playground')">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l3-3-3-3M8 12h4"/></svg>
+                    Test Playground
+                  </div>
+                  <div class="quick-action" onclick="showSection('explorer')">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+                    Explore Data
+                  </div>
+                  <div class="quick-action" onclick="showSection('api-keys')">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="8" r="3"/><path d="M8 8h6M12 6v4"/></svg>
+                    Generate API Key
+                  </div>
+                  <div class="quick-action" onclick="showSection('api-reference')">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 4L2 8l3 4M11 4l3 4-3 4"/></svg>
+                    API Reference
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <h3>Recent Activity</h3>
+                <div class="activity-feed" id="activity-feed">
+                  <p class="muted">No activity yet. Start by storing some context.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PLAYGROUND ───────────────────────────────────── -->
+        <div id="section-playground" class="section">
+          <div class="chat-layout">
+            <div class="chat-main">
+              <div id="chat-thread" class="chat-thread">
+                <div class="chat-message assistant">
+                  <div class="chat-avatar">CQX</div>
+                  <div class="chat-bubble">
+                    <strong>Playground ready.</strong>
+                    <p>Test your context engine interactively. Ask questions and CloudQueryX will build a context bundle from your stored data, send it to the LLM, and auto-store useful context from the conversation.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="chat-composer">
+                <textarea id="chat-input" rows="2" placeholder="Ask something or store a fact..."></textarea>
+                <button class="btn-primary" onclick="sendAssistantMessage()">Send</button>
+              </div>
+              <div id="chat-error" class="form-result"></div>
+            </div>
+            <div class="chat-side" id="chat-side">
+              <button class="side-toggle" onclick="toggleChatSide()" title="Toggle context panel">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3v10M3 3h10v10H3z"/></svg>
+              </button>
+              <div class="side-panel" id="chat-side-panel">
+                <div class="side-section">
+                  <h4>Context Used</h4>
+                  <div id="chat-context-summary" class="side-body"><p class="muted">No context used yet.</p></div>
+                </div>
+                <div class="side-section">
+                  <h4>Stored Context</h4>
+                  <div id="chat-memory-suggestions" class="side-body"><p class="muted">Context will be stored automatically after each response.</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── DATA EXPLORER ────────────────────────────────── -->
+        <div id="section-explorer" class="section">
+          <div class="section-page">
+            <div class="section-header">
+              <h2>Data Explorer</h2>
+              <p>Browse and manage all stored context data</p>
+            </div>
+            <div class="subtab-bar" id="explorer-tabs">
+              <button class="subtab active" data-subtab="memories">Memories</button>
+              <button class="subtab" data-subtab="sources">Sources</button>
+              <button class="subtab" data-subtab="entities">Entities</button>
+              <button class="subtab" data-subtab="relationships">Relationships</button>
+              <button class="subtab" data-subtab="events">Events</button>
+              <button class="subtab" data-subtab="vectors">Vectors</button>
+            </div>
+
+            <!-- Memories -->
+            <div id="explorer-memories" class="explorer-panel active">
+              <div class="data-table-toolbar">
+                <input type="text" placeholder="Search memories..." id="memory-search" onkeyup="filterMemoryTable()">
+                <select id="memory-type-filter" onchange="filterMemoryTable()">
+                  <option value="">All Types</option>
+                  <option value="FACT">Fact</option>
+                  <option value="PREFERENCE">Preference</option>
+                  <option value="DECISION">Decision</option>
+                  <option value="CONVERSATION">Conversation</option>
+                  <option value="FEEDBACK">Feedback</option>
+                  <option value="WORKING">Working</option>
+                  <option value="SEMANTIC">Semantic</option>
+                  <option value="EPISODIC">Episodic</option>
+                  <option value="PROCEDURAL">Procedural</option>
+                </select>
+                <span class="spacer"></span>
+                <button class="btn-primary-sm" onclick="showAddMemoryModal()">+ Add Memory</button>
+              </div>
+              <div id="memory-table-container"></div>
+            </div>
+
+            <!-- Sources -->
+            <div id="explorer-sources" class="explorer-panel">
+              <div class="data-table-toolbar">
+                <input type="text" placeholder="Search sources..." id="source-search">
+                <span class="spacer"></span>
+                <button class="btn-primary-sm" onclick="showAddSourceModal()">+ Add Source</button>
+              </div>
+              <div id="source-table-container"></div>
+            </div>
+
+            <!-- Entities -->
+            <div id="explorer-entities" class="explorer-panel">
+              <div class="data-table-toolbar">
+                <input type="text" placeholder="Search entities..." id="entity-search">
+                <span class="spacer"></span>
+                <button class="btn-primary-sm" onclick="showAddEntityModal()">+ Add Entity</button>
+              </div>
+              <div id="entity-table-container"></div>
+            </div>
+
+            <!-- Relationships -->
+            <div id="explorer-relationships" class="explorer-panel">
+              <div class="data-table-toolbar">
+                <input type="text" placeholder="Search relationships..." id="rel-search">
+                <span class="spacer"></span>
+                <button class="btn-primary-sm" onclick="showAddRelationshipModal()">+ Add Relationship</button>
+              </div>
+              <div id="relationship-table-container"></div>
+            </div>
+
+            <!-- Events -->
+            <div id="explorer-events" class="explorer-panel">
+              <div class="data-table-toolbar">
+                <input type="text" placeholder="Search events..." id="event-search">
+                <span class="spacer"></span>
+                <button class="btn-primary-sm" onclick="showAddEventModal()">+ Log Event</button>
+              </div>
+              <div id="event-table-container"></div>
+            </div>
+
+            <!-- Vectors -->
+            <div id="explorer-vectors" class="explorer-panel">
+              <div class="card" style="max-width:560px">
+                <h3>Vector Search</h3>
+                <p class="muted" style="margin-bottom:12px">Vectors are accessed via semantic search. Enter a query to find similar vectors.</p>
+                <label>Search Query</label>
+                <textarea id="vector-search-query" rows="2" placeholder="Enter a text query..."></textarea>
+                <div class="form-row">
+                  <div>
+                    <label>Top K</label>
+                    <input type="number" id="vector-topk" min="1" max="50" value="10">
+                  </div>
+                  <div>
+                    <label>Namespace</label>
+                    <input type="text" id="vector-namespace" value="default">
+                  </div>
+                </div>
+                <button class="btn-primary full" onclick="searchVectors()">Search Vectors</button>
+              </div>
+              <div id="vector-results" style="margin-top:16px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── KNOWLEDGE GRAPH ──────────────────────────────── -->
+        <div id="section-graph" class="section">
+          <div class="section-page">
+            <div class="section-header-row">
+              <div>
+                <h2>Knowledge Graph</h2>
+                <p class="muted">Visual map of entities and relationships</p>
+              </div>
+              <div class="graph-toolbar">
+                <button class="btn-primary-sm" onclick="showAddEntityModal()">+ Entity</button>
+                <button class="btn-sm" onclick="showAddRelationshipModal()">+ Relationship</button>
+                <button class="btn-sm" onclick="loadGraphData()">Refresh</button>
+              </div>
+            </div>
+            <div class="graph-legend" id="graph-legend"></div>
+            <div class="graph-wrapper">
+              <div class="graph-container">
+                <canvas id="graph-canvas" width="900" height="500"></canvas>
+              </div>
+              <div class="graph-detail-panel" id="graph-detail">
+                <button class="graph-detail-close" onclick="closeGraphDetail()">&times;</button>
+                <div id="graph-detail-content"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── API REFERENCE ────────────────────────────────── -->
+        <div id="section-api-reference" class="section">
+          <div class="api-layout">
+            <div class="api-sidebar-inner">
+              <div class="api-group-label">Context</div>
+              <div class="api-endpoint-item active" data-endpoint="store" onclick="selectEndpoint('store')">
+                <span class="method post">POST</span>
+                <code>/api/v1/store</code>
+              </div>
+              <div class="api-endpoint-item" data-endpoint="recall" onclick="selectEndpoint('recall')">
+                <span class="method post">POST</span>
+                <code>/api/v1/recall</code>
+              </div>
+              <div class="api-endpoint-item" data-endpoint="retrieve" onclick="selectEndpoint('retrieve')">
+                <span class="method post">POST</span>
+                <code>/api/v1/retrieve</code>
+              </div>
+              <div class="api-endpoint-item" data-endpoint="build" onclick="selectEndpoint('build')">
+                <span class="method post">POST</span>
+                <code>/api/v1/context/build</code>
+              </div>
+            </div>
+            <div class="api-detail" id="api-detail">
+              <div id="api-detail-content"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── API KEYS ─────────────────────────────────────── -->
+        <div id="section-api-keys" class="section">
+          <div class="section-page">
+            <div class="section-header-row">
+              <div>
+                <h2>API Keys</h2>
+                <p class="muted">Manage programmatic access to your context database</p>
+              </div>
+              <button class="btn-primary-sm" onclick="showCreateKeyModal()">+ Create Key</button>
+            </div>
+            <div id="api-key-list" style="margin-top:20px"></div>
+            <div id="api-key-reveal"></div>
+          </div>
+        </div>
+
+        <!-- ── WEBHOOKS ─────────────────────────────────────── -->
+        <div id="section-webhooks" class="section">
+          <div class="section-page">
+            <div class="section-header-row">
+              <div>
+                <h2>Webhooks</h2>
+                <p class="muted">Get notified when context changes in your database</p>
+              </div>
+              <button class="btn-primary-sm" onclick="showCreateWebhookModal()">+ Create Webhook</button>
+            </div>
+            <div id="webhook-list" style="margin-top:20px"></div>
+          </div>
+        </div>
+
+        <!-- ── SETTINGS ─────────────────────────────────────── -->
+        <div id="section-settings" class="section">
+          <div class="section-page">
+            <div class="section-header">
+              <h2>Settings</h2>
+              <p>Database configuration and system health</p>
+            </div>
+            <div class="settings-grid">
+              <div class="card">
+                <h3>Database</h3>
+                <div id="settings-db-info"></div>
+              </div>
+              <div class="card">
+                <h3>System Health</h3>
+                <div id="settings-health-info"></div>
+              </div>
+            </div>
+            <div class="danger-zone">
+              <h3>Danger Zone</h3>
+              <p class="muted" style="margin-bottom:12px">These actions are destructive and cannot be undone.</p>
+              <button class="btn-danger" onclick="confirmDeleteAllData()">Delete All Data</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /db-view -->
+    </main>
+  </div><!-- /app-layout -->
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ACTION MODAL (reusable)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="action-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card" id="action-modal-content"></div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="toast-container"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

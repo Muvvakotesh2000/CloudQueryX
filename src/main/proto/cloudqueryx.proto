@@ -1,0 +1,213 @@
+syntax = "proto3";
+
+package cloudqueryx;
+
+option java_multiple_files = true;
+option java_package = "com.cloudqueryx.proto";
+option java_outer_classname = "CloudQueryXProto";
+
+// ─── Coordinator Service ────────────────────────────────────────────────────────
+
+service CoordinatorService {
+  rpc SubmitQuery (QueryRequest) returns (QueryResponse);
+  rpc GetQueryStatus (QueryStatusRequest) returns (QueryStatusResponse);
+  rpc CancelQuery (CancelQueryRequest) returns (CancelQueryResponse);
+  rpc GetClusterInfo (ClusterInfoRequest) returns (ClusterInfoResponse);
+}
+
+// ─── Worker Service ─────────────────────────────────────────────────────────────
+
+service WorkerService {
+  rpc ExecuteFragment (FragmentRequest) returns (stream FragmentResult);
+  rpc Heartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+  rpc ShuffleData (stream ShuffleBlock) returns (ShuffleAck);
+  rpc FetchShuffleData (FetchShuffleRequest) returns (stream ShuffleBlock);
+}
+
+// ─── Common Messages ────────────────────────────────────────────────────────────
+
+message ColumnMetadata {
+  string name = 1;
+  DataTypeProto type = 2;
+  bool nullable = 3;
+}
+
+enum DataTypeProto {
+  INTEGER = 0;
+  BIGINT = 1;
+  DOUBLE = 2;
+  DECIMAL = 3;
+  VARCHAR = 4;
+  BOOLEAN = 5;
+  DATE = 6;
+  TIMESTAMP = 7;
+  NULL_TYPE = 8;
+}
+
+message RowData {
+  repeated ValueProto values = 1;
+}
+
+message ValueProto {
+  oneof value {
+    int32 int_value = 1;
+    int64 long_value = 2;
+    double double_value = 3;
+    string string_value = 4;
+    bool bool_value = 5;
+    bool is_null = 6;
+  }
+}
+
+// ─── Coordinator Messages ───────────────────────────────────────────────────────
+
+message QueryRequest {
+  string query_id = 1;
+  string sql = 2;
+  map<string, string> session_properties = 3;
+  int32 max_rows = 4;
+}
+
+message QueryResponse {
+  string query_id = 1;
+  QueryState state = 2;
+  repeated ColumnMetadata columns = 3;
+  repeated RowData rows = 4;
+  QueryStats stats = 5;
+  string error_message = 6;
+}
+
+message QueryStatusRequest {
+  string query_id = 1;
+}
+
+message QueryStatusResponse {
+  string query_id = 1;
+  QueryState state = 2;
+  QueryStats stats = 3;
+  string error_message = 4;
+}
+
+message CancelQueryRequest {
+  string query_id = 1;
+}
+
+message CancelQueryResponse {
+  bool success = 1;
+}
+
+message ClusterInfoRequest {}
+
+message ClusterInfoResponse {
+  int32 coordinator_count = 1;
+  int32 worker_count = 2;
+  repeated NodeInfo nodes = 3;
+}
+
+message NodeInfo {
+  string node_id = 1;
+  string host = 2;
+  int32 port = 3;
+  NodeRole role = 4;
+  NodeState state = 5;
+  ResourceUsage resource_usage = 6;
+}
+
+message ResourceUsage {
+  double cpu_percent = 1;
+  int64 memory_used_bytes = 2;
+  int64 memory_total_bytes = 3;
+  int32 active_tasks = 4;
+}
+
+enum QueryState {
+  QUEUED = 0;
+  PLANNING = 1;
+  RUNNING = 2;
+  FINISHED = 3;
+  FAILED = 4;
+  CANCELLED = 5;
+}
+
+enum NodeRole {
+  COORDINATOR = 0;
+  WORKER = 1;
+}
+
+enum NodeState {
+  ACTIVE = 0;
+  INACTIVE = 1;
+  DRAINING = 2;
+}
+
+message QueryStats {
+  int64 elapsed_millis = 1;
+  int64 planning_millis = 2;
+  int64 execution_millis = 3;
+  int64 rows_scanned = 4;
+  int64 rows_returned = 5;
+  int64 bytes_processed = 6;
+  int32 tasks_total = 7;
+  int32 tasks_completed = 8;
+  string physical_plan = 9;
+  string optimized_plan = 10;
+}
+
+// ─── Worker Messages ────────────────────────────────────────────────────────────
+
+message FragmentRequest {
+  string query_id = 1;
+  string fragment_id = 2;
+  bytes serialized_plan = 3;
+  repeated DataSource sources = 4;
+  map<string, string> properties = 5;
+}
+
+message FragmentResult {
+  string fragment_id = 1;
+  FragmentState state = 2;
+  repeated RowData rows = 3;
+  repeated ColumnMetadata columns = 4;
+  string error_message = 5;
+  int64 rows_produced = 6;
+}
+
+message DataSource {
+  string table_name = 1;
+  repeated string partitions = 2;
+}
+
+enum FragmentState {
+  FRAGMENT_RUNNING = 0;
+  FRAGMENT_FINISHED = 1;
+  FRAGMENT_FAILED = 2;
+}
+
+message HeartbeatRequest {
+  string node_id = 1;
+  ResourceUsage resource_usage = 2;
+  int32 active_queries = 3;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  repeated string queries_to_cancel = 2;
+}
+
+message ShuffleBlock {
+  string query_id = 1;
+  int32 partition_id = 2;
+  string stage_id = 3;
+  repeated RowData rows = 4;
+  bool is_last = 5;
+}
+
+message ShuffleAck {
+  int64 rows_received = 1;
+}
+
+message FetchShuffleRequest {
+  string query_id = 1;
+  string stage_id = 2;
+  int32 partition_id = 3;
+}

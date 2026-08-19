@@ -3,7 +3,6 @@ FROM gradle:8.6-jdk17 AS builder
 WORKDIR /app
 COPY build.gradle settings.gradle ./
 COPY gradle ./gradle
-COPY gradlew gradlew.bat ./
 COPY src ./src
 
 RUN gradle build -x test --no-daemon

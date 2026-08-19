@@ -200,6 +200,17 @@ button:disabled { opacity: 0.65; cursor: wait; }
   color: #b8c8bf;
 }
 .playground-copy .hero-note { color: #8fa097; }
+.playground-copy .btn-outline {
+  color: #eef7f0;
+  border-color: rgba(238,247,240,0.55);
+  background: rgba(255,255,255,0.04);
+}
+.playground-copy .btn-outline:hover {
+  color: #ffffff;
+  border-color: rgba(238,247,240,0.85);
+  background: rgba(255,255,255,0.1);
+  text-decoration: none;
+}
 
 .playground-shell {
   display: grid;

@@ -14,6 +14,6 @@ COPY --from=builder /app/build/libs/CloudQueryX-1.0.0.jar app.jar
 
 ENV JAVA_OPTS="-Xms256m -Xmx1024m -XX:+UseG1GC"
 
-EXPOSE 80
+EXPOSE 8080
 
-CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar web ${PORT:-80}"]
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar web ${PORT:-8080}"]

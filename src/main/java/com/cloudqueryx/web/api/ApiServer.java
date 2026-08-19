@@ -28,75 +28,64 @@ public class ApiServer {
 
     private final HttpServer server;
     private final AppConfig config;
-    private final DatabaseConfig dbConfig;
-    private final UserRepository userRepo;
-    private final SessionRepository sessionRepo;
-    private final DatabaseRepository databaseRepo;
-    private final DatabaseApiKeyRepository apiKeyRepo;
-    private final VectorRepository vectorRepo;
-    private final MemoryRepository memoryRepo;
-    private final GraphRepository graphRepo;
-    private final EventRepository eventRepo;
-    private final EmbeddingService embeddingService;
-    private final WebhookDispatcher webhookDispatcher;
-    private final SourceService sourceService;
-    private final ContextRetrievalService contextRetrievalService;
-    private final ContextBundleService contextBundleService;
-    private final OpenAiChatService openAiChatService;
+    private final DatabaseConfig providedDbConfig;
+    private DatabaseConfig dbConfig;
+    private UserRepository userRepo;
+    private SessionRepository sessionRepo;
+    private DatabaseRepository databaseRepo;
+    private DatabaseApiKeyRepository apiKeyRepo;
+    private VectorRepository vectorRepo;
+    private MemoryRepository memoryRepo;
+    private GraphRepository graphRepo;
+    private EventRepository eventRepo;
+    private EmbeddingService embeddingService;
+    private WebhookDispatcher webhookDispatcher;
+    private SourceService sourceService;
+    private ContextRetrievalService contextRetrievalService;
+    private ContextBundleService contextBundleService;
+    private OpenAiChatService openAiChatService;
     private volatile boolean schemaMigrationStarted;
+    private volatile boolean backendReady;
+    private volatile Throwable startupError;
 
     public ApiServer(int port) throws IOException {
         this.config = AppConfig.getInstance();
-        this.dbConfig = DatabaseConfig.getInstance();
-        Duration sessionTimeout = Duration.ofHours(config.sessionTimeoutHours());
-
-        this.userRepo = new UserRepository(dbConfig);
-        this.sessionRepo = new SessionRepository(dbConfig, sessionTimeout);
-        this.databaseRepo = new DatabaseRepository(dbConfig);
-        this.apiKeyRepo = new DatabaseApiKeyRepository(dbConfig);
-        this.vectorRepo = new VectorRepository(dbConfig);
-        this.memoryRepo = new MemoryRepository(dbConfig);
-        this.graphRepo = new GraphRepository(dbConfig);
-        this.eventRepo = new EventRepository(dbConfig);
-        this.embeddingService = createEmbeddingService();
-        this.webhookDispatcher = new WebhookDispatcher(new WebhookRepository(dbConfig));
-        SourceRepository sourceRepo = new SourceRepository(dbConfig);
-        ContextChunkRepository chunkRepo = new ContextChunkRepository(dbConfig);
-        ContextBundleRepository bundleRepo = new ContextBundleRepository(dbConfig);
-        TokenEstimator tokenEstimator = new TokenEstimator();
-        this.sourceService = new SourceService(sourceRepo, chunkRepo, new ChunkingService(tokenEstimator), embeddingService);
-        this.contextRetrievalService = new ContextRetrievalService(
-                memoryRepo, chunkRepo, graphRepo, eventRepo, embeddingService, tokenEstimator);
-        this.contextBundleService = new ContextBundleService(
-                contextRetrievalService, bundleRepo,
-                new TokenBudgetOptimizer(tokenEstimator, new ExtractiveContextCompressor(tokenEstimator)),
-                new ContextFormatterService());
-        this.openAiChatService = new OpenAiChatService(config);
+        this.providedDbConfig = null;
 
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.setExecutor(Executors.newFixedThreadPool(config.dbPoolSize()));
+        server.setExecutor(Executors.newFixedThreadPool(httpThreadPoolSize()));
         registerRoutes();
         log.info("API server configured on port {}", port);
     }
 
     public ApiServer(int port, DatabaseConfig dbConfig) throws IOException {
         this.config = AppConfig.getInstance();
+        this.providedDbConfig = dbConfig;
         this.dbConfig = dbConfig;
+        initializeBackend(dbConfig);
+        this.server = HttpServer.create(new InetSocketAddress(port), 0);
+        server.setExecutor(Executors.newFixedThreadPool(httpThreadPoolSize()));
+        registerRoutes();
+        log.info("API server configured on port {} (custom db config)", port);
+    }
+
+    private void initializeBackend(DatabaseConfig databaseConfig) {
         Duration sessionTimeout = Duration.ofHours(config.sessionTimeoutHours());
 
-        this.userRepo = new UserRepository(dbConfig);
-        this.sessionRepo = new SessionRepository(dbConfig, sessionTimeout);
-        this.databaseRepo = new DatabaseRepository(dbConfig);
-        this.apiKeyRepo = new DatabaseApiKeyRepository(dbConfig);
-        this.vectorRepo = new VectorRepository(dbConfig);
-        this.memoryRepo = new MemoryRepository(dbConfig);
-        this.graphRepo = new GraphRepository(dbConfig);
-        this.eventRepo = new EventRepository(dbConfig);
+        this.dbConfig = databaseConfig;
+        this.userRepo = new UserRepository(databaseConfig);
+        this.sessionRepo = new SessionRepository(databaseConfig, sessionTimeout);
+        this.databaseRepo = new DatabaseRepository(databaseConfig);
+        this.apiKeyRepo = new DatabaseApiKeyRepository(databaseConfig);
+        this.vectorRepo = new VectorRepository(databaseConfig);
+        this.memoryRepo = new MemoryRepository(databaseConfig);
+        this.graphRepo = new GraphRepository(databaseConfig);
+        this.eventRepo = new EventRepository(databaseConfig);
         this.embeddingService = createEmbeddingService();
-        this.webhookDispatcher = new WebhookDispatcher(new WebhookRepository(dbConfig));
-        SourceRepository sourceRepo = new SourceRepository(dbConfig);
-        ContextChunkRepository chunkRepo = new ContextChunkRepository(dbConfig);
-        ContextBundleRepository bundleRepo = new ContextBundleRepository(dbConfig);
+        this.webhookDispatcher = new WebhookDispatcher(new WebhookRepository(databaseConfig));
+        SourceRepository sourceRepo = new SourceRepository(databaseConfig);
+        ContextChunkRepository chunkRepo = new ContextChunkRepository(databaseConfig);
+        ContextBundleRepository bundleRepo = new ContextBundleRepository(databaseConfig);
         TokenEstimator tokenEstimator = new TokenEstimator();
         this.sourceService = new SourceService(sourceRepo, chunkRepo, new ChunkingService(tokenEstimator), embeddingService);
         this.contextRetrievalService = new ContextRetrievalService(
@@ -106,11 +95,32 @@ public class ApiServer {
                 new TokenBudgetOptimizer(tokenEstimator, new ExtractiveContextCompressor(tokenEstimator)),
                 new ContextFormatterService());
         this.openAiChatService = new OpenAiChatService(config);
+        this.backendReady = true;
+        this.startupError = null;
+        log.info("Backend services initialized");
+    }
 
-        this.server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.setExecutor(Executors.newFixedThreadPool(config.dbPoolSize()));
-        registerRoutes();
-        log.info("API server configured on port {} (custom db config)", port);
+    private int httpThreadPoolSize() {
+        int configured = config.dbPoolSize();
+        if (System.getenv("VERCEL") != null) {
+            return Math.max(2, Math.min(configured, 4));
+        }
+        return Math.max(2, configured);
+    }
+
+    private void startBackendInitialization() {
+        if (backendReady || startupError != null || providedDbConfig != null) return;
+        Thread init = new Thread(() -> {
+            try {
+                initializeBackend(DatabaseConfig.getInstance());
+                runSchemaMigrationAsync();
+            } catch (Throwable t) {
+                startupError = t;
+                log.error("Backend initialization failed: {}", t.getMessage(), t);
+            }
+        }, "cloudqueryx-backend-init");
+        init.setDaemon(true);
+        init.start();
     }
 
     private EmbeddingService createEmbeddingService() {
@@ -147,7 +157,7 @@ public class ApiServer {
     public void start() {
         server.start();
         log.info("API server started on http://localhost:{}", server.getAddress().getPort());
-        runSchemaMigrationAsync();
+        startBackendInitialization();
     }
 
     private void runSchemaMigrationAsync() {
@@ -161,7 +171,9 @@ public class ApiServer {
 
     public void stop() {
         server.stop(1);
-        dbConfig.close();
+        if (dbConfig != null) {
+            dbConfig.close();
+        }
     }
 
     private void registerRoutes() {
@@ -197,6 +209,12 @@ public class ApiServer {
             ex.close();
             return;
         }
+        if (!isPublicStartupPath(ex) && !backendReady) {
+            sendJson(ex, 503, Map.of(
+                    "error", startupError == null ? "CloudQueryX backend is starting" : "CloudQueryX backend failed to start",
+                    "status", startupError == null ? "starting" : "unhealthy"));
+            return;
+        }
         try {
             handler.handle(ex);
         } catch (Exception e) {
@@ -205,6 +223,13 @@ public class ApiServer {
                 sendError(ex, 500, "Internal server error");
             }
         }
+    }
+
+    private boolean isPublicStartupPath(HttpExchange ex) {
+        String path = ex.getRequestURI().getPath();
+        return "/".equals(path) || path.startsWith("/assets/") || path.startsWith("/api/health")
+                || path.endsWith(".css") || path.endsWith(".js") || path.endsWith(".png")
+                || path.endsWith(".ico") || path.endsWith(".svg");
     }
 
     private void addCorsHeaders(HttpExchange ex) {
@@ -223,6 +248,16 @@ public class ApiServer {
     // ─── Health ────────────────────────────────────────────────────────
 
     private void handleHealth(HttpExchange ex) throws IOException {
+        if (!backendReady) {
+            Map<String, Object> health = new LinkedHashMap<>();
+            health.put("status", startupError == null ? "starting" : "unhealthy");
+            health.put("database", "not_ready");
+            if (startupError != null) {
+                health.put("error", startupError.getMessage());
+            }
+            sendJson(ex, startupError == null ? 202 : 503, health);
+            return;
+        }
         try (var conn = dbConfig.getConnection()) {
             Map<String, Object> health = new LinkedHashMap<>();
             health.put("status", "healthy");

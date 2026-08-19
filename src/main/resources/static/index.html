@@ -115,6 +115,33 @@
     </div>
   </section>
 
+  <section class="proof-section">
+    <div class="section-inner">
+      <div class="proof-header">
+        <p class="hero-tag light">Recruiter demo path</p>
+        <h2>One demo shows the whole context pipeline.</h2>
+        <p class="section-lede">Teach the assistant a fact, ask a follow-up, then inspect exactly what CloudQueryX retrieved, ranked, sent to the LLM, and stored afterward.</p>
+      </div>
+      <div class="proof-grid">
+        <div class="proof-card">
+          <span>Without CloudQueryX</span>
+          <h3>LLM-only apps guess or forget.</h3>
+          <p>The prompt has to carry everything. Memory is hidden in app code, retrieval is hard to explain, and stale context can slip into answers.</p>
+        </div>
+        <div class="proof-card strong">
+          <span>With CloudQueryX</span>
+          <h3>The model gets a clean context bundle.</h3>
+          <p>CloudQueryX retrieves memories, source chunks, graph relationships, and events, then ranks and trims them before the LLM call.</p>
+        </div>
+        <div class="proof-card">
+          <span>What recruiters see</span>
+          <h3>Not just chat. Real backend behavior.</h3>
+          <p>The playground exposes scoring, token budget, freshness, memory writes, and a trace view that explains every answer.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="architecture-section" id="architecture">
     <div class="section-inner">
       <h2>Why It Matters</h2>
@@ -168,6 +195,14 @@
       </div>
       <div class="arch-stack">
         <p>Java 17 &middot; ANTLR4 &middot; gRPC &middot; ONNX Runtime &middot; HikariCP &middot; PostgreSQL</p>
+      </div>
+      <div class="runtime-layers">
+        <div><strong>1. User message</strong><span>Question enters the assistant demo.</span></div>
+        <div><strong>2. Retrieve</strong><span>Memory, source chunks, graph, events, full text, and pgvector candidates are collected.</span></div>
+        <div><strong>3. Rank</strong><span>Relevance, text match, freshness, importance, and mode boost determine priority.</span></div>
+        <div><strong>4. Budget</strong><span>Useful context stays full, medium context is trimmed, low signal is excluded.</span></div>
+        <div><strong>5. Handoff</strong><span>CloudQueryX formats the context bundle; the LLM generates the final answer.</span></div>
+        <div><strong>6. Learn</strong><span>Useful facts, entities, relationships, and events are stored for the next turn.</span></div>
       </div>
     </div>
   </section>
@@ -306,9 +341,11 @@
               </div>
               <div class="chat-examples" id="chat-examples">
                 <span class="chat-example-label">Try:</span>
-                <button type="button" class="chip" onclick="fillChatExample(this)">My name is Kotesh and I am building CloudQueryX.</button>
-                <button type="button" class="chip" onclick="fillChatExample(this)">Remember that I prefer concise explanations.</button>
-                <button type="button" class="chip" onclick="fillChatExample(this)">What context did you use for that answer?</button>
+                <button type="button" class="chip" onclick="fillScenario('identity')">Teach identity</button>
+                <button type="button" class="chip" onclick="fillScenario('preference')">Save preference</button>
+                <button type="button" class="chip" onclick="fillScenario('architecture')">Explain architecture</button>
+                <button type="button" class="chip" onclick="fillScenario('debug')">Debug scenario</button>
+                <button type="button" class="chip" onclick="fillScenario('evidence')">Show evidence</button>
               </div>
               <div class="chat-composer">
                 <textarea id="chat-input" rows="2" placeholder="Ask something or store a fact..."></textarea>
@@ -327,9 +364,26 @@
                   <div id="chat-context-summary" class="side-body"><p class="muted">No context used yet.</p></div>
                 </div>
                 <div class="side-section">
+                  <h4>Context quality</h4>
+                  <p class="side-hint">A quick score for coverage, freshness, token efficiency, and noise risk.</p>
+                  <div id="chat-quality-score" class="side-body"><p class="muted">Ask a question to score the context bundle.</p></div>
+                </div>
+                <div class="side-section">
+                  <h4>Trace debugger</h4>
+                  <p class="side-hint">The infrastructure steps behind the answer.</p>
+                  <div id="chat-trace-debugger" class="side-body"><p class="muted">No trace yet.</p></div>
+                </div>
+                <div class="side-section">
                   <h4>Memory written after this turn</h4>
                   <p class="side-hint">New facts, entities, relationships, or events the model picked out of this conversation and saved automatically.</p>
                   <div id="chat-memory-suggestions" class="side-body"><p class="muted">Context will be stored automatically after each response.</p></div>
+                </div>
+                <div class="side-section">
+                  <h4>Memory lifecycle</h4>
+                  <p class="side-hint">How context moves through the system over time.</p>
+                  <div class="lifecycle-list">
+                    <span>Created</span><span>Retrieved</span><span>Reinforced</span><span>Corrected</span><span>Forgotten</span>
+                  </div>
                 </div>
               </div>
             </div>

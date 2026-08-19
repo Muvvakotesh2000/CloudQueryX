@@ -462,6 +462,19 @@ function fillChatExample(btn) {
   input.focus();
 }
 
+function fillScenario(kind) {
+  var scenarios = {
+    identity: 'My name is Kotesh Muvva. I am building CloudQueryX, a provider-neutral Context Runtime for LLM applications.',
+    preference: 'Remember that I prefer concise engineering explanations with clear evidence and minimal fluff.',
+    architecture: 'Explain CloudQueryX architecture and show which memories, sources, graph relationships, and events you used.',
+    debug: 'Debug this deployment issue: Render is serving an old static app.js file after a new GitHub commit. What context should CloudQueryX retrieve?',
+    evidence: 'Why did you say that? Show the context bundle, ranking reasons, and what new memory you stored.'
+  };
+  var input = document.getElementById('chat-input');
+  input.value = scenarios[kind] || scenarios.architecture;
+  input.focus();
+}
+
 async function sendAssistantMessage() {
   var input = document.getElementById('chat-input');
   var error = document.getElementById('chat-error');
@@ -532,7 +545,7 @@ async function sendAssistantMessage() {
     appendChatMessage('assistant', 'Could not complete the request: ' + res.error);
     return;
   }
-  renderChatContext(res.contextBundle || {});
+  renderChatContext(res.contextBundle || {}, message);
   appendChatMessage('assistant', res.answer || 'No answer returned.');
   chatMemorySuggestions = normalizeMemorySuggestions(res.memorySuggestions || []);
   if (chatMemorySuggestions.length === 0) {
@@ -563,11 +576,21 @@ function formatAssistantText(text) {
   return d.innerHTML.replace(/\n/g, '<br>');
 }
 
-function renderChatContext(bundle) {
+function renderChatContext(bundle, query) {
   var box = document.getElementById('chat-context-summary');
-  if (bundle.error) { box.innerHTML = '<div class="form-error">' + esc(bundle.error) + '</div>'; return; }
+  if (bundle.error) {
+    box.innerHTML = '<div class="form-error">' + esc(bundle.error) + '</div>';
+    renderContextQuality({}, []);
+    renderTraceDebugger({}, query || '');
+    return;
+  }
   var items = bundle.items || [];
-  if (items.length === 0) { box.innerHTML = '<p class="muted">No saved context matched. The LLM answered without CloudQueryX memory for this turn.</p>'; return; }
+  if (items.length === 0) {
+    box.innerHTML = '<p class="muted">No saved context matched. The LLM answered without CloudQueryX memory for this turn.</p>';
+    renderContextQuality(bundle, items);
+    renderTraceDebugger(bundle, query || '');
+    return;
+  }
   box.innerHTML =
     '<div class="bundle-summary compact"><span>' + items.length + ' items</span><span>' +
     (bundle.estimatedTokens || 0) + ' tokens</span><span>' + esc(bundle.freshnessStatus || 'VALID') + '</span></div>' +
@@ -575,6 +598,72 @@ function renderChatContext(bundle) {
       return '<div class="context-chip"><strong>' + esc(item.type || item.itemType || 'CONTEXT') + '</strong>' +
         '<p>' + esc(previewText(item.content || '', 180)) + '</p><small>' + esc(item.reason || '') + '</small></div>';
     }).join('');
+  renderContextQuality(bundle, items);
+  renderTraceDebugger(bundle, query || '');
+}
+
+function renderContextQuality(bundle, items) {
+  var el = document.getElementById('chat-quality-score');
+  if (!el) return;
+  items = items || [];
+  var tokens = Number(bundle.estimatedTokens || 0);
+  var budget = 8000;
+  var types = {};
+  items.forEach(function(item) { types[String(item.type || item.itemType || 'context').toLowerCase()] = true; });
+  var typeCount = Object.keys(types).length;
+  var coverage = Math.min(100, Math.round((items.length / 5) * 70 + typeCount * 8));
+  var freshness = String(bundle.freshnessStatus || 'VALID').toUpperCase() === 'VALID' ? 92 : 62;
+  var tokenEfficiency = tokens > 0 ? Math.max(35, Math.min(100, Math.round(100 - (tokens / budget) * 45))) : 55;
+  var noiseRisk = items.length > 10 ? 38 : items.length > 0 ? 14 : 8;
+  var score = Math.round(coverage * 0.35 + freshness * 0.25 + tokenEfficiency * 0.25 + (100 - noiseRisk) * 0.15);
+  el.innerHTML =
+    '<div class="quality-score"><strong>' + score + '%</strong><span>Context quality</span></div>' +
+    '<div class="quality-bars">' +
+      qualityBar('Coverage', coverage) +
+      qualityBar('Freshness', freshness) +
+      qualityBar('Token efficiency', tokenEfficiency) +
+      qualityBar('Noise risk', 100 - noiseRisk) +
+    '</div>';
+}
+
+function qualityBar(label, value) {
+  return '<div class="quality-row"><span>' + esc(label) + '</span><div><i style="width:' + value + '%"></i></div><b>' + value + '</b></div>';
+}
+
+function renderTraceDebugger(bundle, query) {
+  var el = document.getElementById('chat-trace-debugger');
+  if (!el) return;
+  var items = bundle.items || [];
+  var counts = countBundleTypes(items);
+  var tokens = bundle.estimatedTokens || 0;
+  var topReason = items[0] ? (items[0].reason || 'Highest ranked context item selected.') : 'No stored context matched this turn.';
+  var steps = [
+    ['Input', query ? previewText(query, 90) : 'User message captured.'],
+    ['Retrieve', counts.total + ' candidates selected from memory/source/graph/event context.'],
+    ['Rank', topReason],
+    ['Budget', tokens + ' estimated tokens placed into the context bundle.'],
+    ['Handoff', 'Formatted context sent to the LLM; CloudQueryX does not own the final answer.'],
+    ['Learn', 'Assistant suggestions are stored as memory, source, entity, relationship, or event records.']
+  ];
+  el.innerHTML =
+    '<div class="trace-metrics">' +
+      '<span>Memory ' + counts.memory + '</span><span>Source ' + counts.source + '</span><span>Graph ' + counts.graph + '</span><span>Event ' + counts.event + '</span>' +
+    '</div>' +
+    '<ol class="trace-list">' + steps.map(function(step) {
+      return '<li><strong>' + esc(step[0]) + '</strong><p>' + esc(step[1]) + '</p></li>';
+    }).join('') + '</ol>';
+}
+
+function countBundleTypes(items) {
+  var counts = { total: items.length, memory: 0, source: 0, graph: 0, event: 0 };
+  items.forEach(function(item) {
+    var type = String(item.type || item.itemType || '').toLowerCase();
+    if (type.includes('memory')) counts.memory += 1;
+    else if (type.includes('source') || type.includes('chunk')) counts.source += 1;
+    else if (type.includes('entity') || type.includes('relationship') || type.includes('graph')) counts.graph += 1;
+    else if (type.includes('event')) counts.event += 1;
+  });
+  return counts;
 }
 
 function normalizeMemorySuggestions(items) {

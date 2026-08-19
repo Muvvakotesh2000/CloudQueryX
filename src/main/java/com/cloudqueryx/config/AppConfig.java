@@ -30,16 +30,30 @@ public final class AppConfig {
     }
 
     public String get(String key) {
-        return dotenv.get(key);
+        return normalize(System.getenv(key), dotenv.get(key));
     }
 
     public String get(String key, String defaultValue) {
-        String value = dotenv.get(key);
+        String value = normalize(System.getenv(key), dotenv.get(key));
         return value != null ? value : defaultValue;
     }
 
+    private String normalize(String primary, String fallback) {
+        String value = primary != null && !primary.isBlank() ? primary : fallback;
+        if (value == null) return null;
+        value = value.trim();
+        if (value.length() >= 2) {
+            boolean singleQuoted = value.startsWith("'") && value.endsWith("'");
+            boolean doubleQuoted = value.startsWith("\"") && value.endsWith("\"");
+            if (singleQuoted || doubleQuoted) {
+                value = value.substring(1, value.length() - 1);
+            }
+        }
+        return value;
+    }
+
     public int getInt(String key, int defaultValue) {
-        String value = dotenv.get(key);
+        String value = get(key);
         if (value == null || value.isBlank()) return defaultValue;
         try {
             return Integer.parseInt(value.trim());
@@ -50,7 +64,7 @@ public final class AppConfig {
     }
 
     public long getLong(String key, long defaultValue) {
-        String value = dotenv.get(key);
+        String value = get(key);
         if (value == null || value.isBlank()) return defaultValue;
         try {
             return Long.parseLong(value.trim());
@@ -61,7 +75,7 @@ public final class AppConfig {
     }
 
     public double getDouble(String key, double defaultValue) {
-        String value = dotenv.get(key);
+        String value = get(key);
         if (value == null || value.isBlank()) return defaultValue;
         try {
             return Double.parseDouble(value.trim());
@@ -72,7 +86,7 @@ public final class AppConfig {
     }
 
     public boolean getBoolean(String key, boolean defaultValue) {
-        String value = dotenv.get(key);
+        String value = get(key);
         if (value == null || value.isBlank()) return defaultValue;
         return Boolean.parseBoolean(value.trim());
     }

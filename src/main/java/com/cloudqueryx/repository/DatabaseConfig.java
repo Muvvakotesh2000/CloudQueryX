@@ -22,8 +22,8 @@ public final class DatabaseConfig {
         hikari.setJdbcUrl(config.dbUrl());
         hikari.setUsername(config.dbUser());
         hikari.setPassword(config.dbPassword());
-        hikari.setMaximumPoolSize(config.dbPoolSize());
-        hikari.setConnectionTimeout(config.dbPoolTimeout());
+        hikari.setMaximumPoolSize(poolSize(config));
+        hikari.setConnectionTimeout(connectionTimeout(config));
         hikari.setMinimumIdle(0);
         hikari.setInitializationFailTimeout(-1);
         hikari.setValidationTimeout(5_000);
@@ -36,7 +36,23 @@ public final class DatabaseConfig {
         hikari.addDataSourceProperty("useServerPrepStmts", "true");
 
         this.dataSource = new HikariDataSource(hikari);
-        log.info("Connection pool initialized: {} (max pool size: {})", config.dbUrl(), config.dbPoolSize());
+        log.info("Connection pool initialized: {} (max pool size: {})", config.dbUrl(), hikari.getMaximumPoolSize());
+    }
+
+    private int poolSize(AppConfig config) {
+        int configured = config.dbPoolSize();
+        if (System.getenv("VERCEL") != null) {
+            return Math.max(1, Math.min(configured, 3));
+        }
+        return configured;
+    }
+
+    private long connectionTimeout(AppConfig config) {
+        long configured = config.dbPoolTimeout();
+        if (System.getenv("VERCEL") != null) {
+            return Math.max(250, Math.min(configured, 2_000));
+        }
+        return configured;
     }
 
     public static DatabaseConfig getInstance() {

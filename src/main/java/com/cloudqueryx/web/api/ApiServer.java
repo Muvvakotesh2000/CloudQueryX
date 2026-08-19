@@ -43,6 +43,7 @@ public class ApiServer {
     private final ContextRetrievalService contextRetrievalService;
     private final ContextBundleService contextBundleService;
     private final OpenAiChatService openAiChatService;
+    private volatile boolean schemaMigrationStarted;
 
     public ApiServer(int port) throws IOException {
         this.config = AppConfig.getInstance();
@@ -71,8 +72,6 @@ public class ApiServer {
                 new TokenBudgetOptimizer(tokenEstimator, new ExtractiveContextCompressor(tokenEstimator)),
                 new ContextFormatterService());
         this.openAiChatService = new OpenAiChatService(config);
-
-        SchemaManager.runMigration(dbConfig, "/migration-v2.sql");
 
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
         server.setExecutor(Executors.newFixedThreadPool(config.dbPoolSize()));
@@ -107,8 +106,6 @@ public class ApiServer {
                 new TokenBudgetOptimizer(tokenEstimator, new ExtractiveContextCompressor(tokenEstimator)),
                 new ContextFormatterService());
         this.openAiChatService = new OpenAiChatService(config);
-
-        SchemaManager.runMigration(dbConfig, "/migration-v2.sql");
 
         this.server = HttpServer.create(new InetSocketAddress(port), 0);
         server.setExecutor(Executors.newFixedThreadPool(config.dbPoolSize()));
@@ -150,6 +147,16 @@ public class ApiServer {
     public void start() {
         server.start();
         log.info("API server started on http://localhost:{}", server.getAddress().getPort());
+        runSchemaMigrationAsync();
+    }
+
+    private void runSchemaMigrationAsync() {
+        if (schemaMigrationStarted) return;
+        schemaMigrationStarted = true;
+        Thread migration = new Thread(() -> SchemaManager.runMigration(dbConfig, "/migration-v2.sql"),
+                "cloudqueryx-schema-migration");
+        migration.setDaemon(true);
+        migration.start();
     }
 
     public void stop() {

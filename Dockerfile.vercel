@@ -12,7 +12,7 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=builder /app/build/libs/CloudQueryX-1.0.0.jar app.jar
 
-ENV JAVA_OPTS="-Xms256m -Xmx1024m -XX:+UseG1GC"
+ENV JAVA_OPTS="-Xms64m -Xmx384m -XX:+UseG1GC -XX:MaxRAMPercentage=70"
 
 EXPOSE 8080
 

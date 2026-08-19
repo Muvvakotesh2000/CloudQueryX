@@ -1,13 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════
    CloudQueryX — Developer Platform
    ═══════════════════════════════════════════════════════════════ */
-var token = localStorage.getItem('cqx_token');
+var token = sessionStorage.getItem('cqx_demo_token');
 var currentDbId = null;
 var currentSection = 'overview';
 var currentExplorerTab = 'memories';
 var chatMemorySuggestions = [];
 var lastAutoSavedContext = [];
 var forceGraph = null;
+var demoMode = sessionStorage.getItem('cqx_demo_mode') === '1';
+var demoMessageCount = Number(sessionStorage.getItem('cqx_demo_messages') || '0');
+var DEMO_MESSAGE_LIMIT = 20;
 
 var API = '';
 function api(path, opts) {
@@ -51,6 +54,63 @@ function showToast(message, type) {
   container.appendChild(toast);
   setTimeout(function() { toast.classList.add('show'); }, 10);
   setTimeout(function() { toast.classList.remove('show'); setTimeout(function() { toast.remove(); }, 300); }, 4000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PUBLIC DEMO SESSION
+// ═══════════════════════════════════════════════════════════════
+async function startDemo() {
+  showToast('Preparing a temporary demo workspace...', 'info');
+  var res = await api('/api/demo/start', { method: 'POST', body: JSON.stringify({}) });
+  if (res.error) {
+    showToast(res.error, 'error');
+    return;
+  }
+  token = res.token;
+  demoMode = true;
+  demoMessageCount = 0;
+  sessionStorage.setItem('cqx_demo_token', token);
+  sessionStorage.setItem('cqx_demo_mode', '1');
+  sessionStorage.setItem('cqx_demo_messages', '0');
+  localStorage.removeItem('cqx_token');
+  showToast('Demo ready. Your data will be deleted when this session ends.');
+  showApp(res.user, res.defaultDatabase);
+  updateDemoMeter();
+}
+
+function updateDemoMeter() {
+  var el = document.getElementById('demo-message-count');
+  if (el) el.textContent = demoMessageCount + ' / ' + DEMO_MESSAGE_LIMIT + ' messages';
+}
+
+function cleanupDemoSession(useBeacon) {
+  var demoToken = sessionStorage.getItem('cqx_demo_token');
+  if (!demoToken) return;
+  var payload = JSON.stringify({ token: demoToken });
+  if (useBeacon && navigator.sendBeacon) {
+    navigator.sendBeacon('/api/demo/end', new Blob([payload], { type: 'application/json' }));
+  } else {
+    fetch('/api/demo/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true
+    }).catch(function() {});
+  }
+  sessionStorage.removeItem('cqx_demo_token');
+  sessionStorage.removeItem('cqx_demo_mode');
+  sessionStorage.removeItem('cqx_demo_messages');
+}
+
+function endDemoAndReturn() {
+  cleanupDemoSession(false);
+  token = null;
+  currentDbId = null;
+  demoMode = false;
+  demoMessageCount = 0;
+  document.getElementById('app-view').style.display = 'none';
+  document.getElementById('landing-view').style.display = 'block';
+  showToast('Demo ended and temporary data was deleted.');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -147,9 +207,16 @@ function handleLogin(e) {
 }
 
 function logout() {
-  api('/api/auth/logout', { method: 'POST' });
+  if (demoMode) {
+    cleanupDemoSession(false);
+  } else {
+    api('/api/auth/logout', { method: 'POST' });
+  }
   token = null; currentDbId = null;
   localStorage.removeItem('cqx_token');
+  sessionStorage.removeItem('cqx_demo_token');
+  sessionStorage.removeItem('cqx_demo_mode');
+  sessionStorage.removeItem('cqx_demo_messages');
   document.getElementById('app-view').style.display = 'none';
   document.getElementById('landing-view').style.display = 'block';
 }
@@ -157,10 +224,11 @@ function logout() {
 function showApp(user, db) {
   document.getElementById('landing-view').style.display = 'none';
   document.getElementById('app-view').style.display = 'block';
-  document.getElementById('sidebar-email').textContent = user ? user.email : '';
+  document.getElementById('sidebar-email').textContent = demoMode ? 'Public demo session' : (user ? user.email : '');
   if (db) openDatabase(db);
   else loadDatabases();
   checkHealth();
+  updateDemoMeter();
 }
 
 function backToLanding() {
@@ -387,9 +455,19 @@ async function sendAssistantMessage() {
   var error = document.getElementById('chat-error');
   var message = input.value.trim();
   if (!message) return;
+  if (demoMode && demoMessageCount >= DEMO_MESSAGE_LIMIT) {
+    error.textContent = 'Demo limit reached. End the demo to clear the temporary data and start again.';
+    showToast('Demo limit reached. Start a fresh demo to continue.', 'error');
+    return;
+  }
   error.textContent = '';
   input.value = '';
   localStorage.setItem('cqx_playground_used', '1');
+  if (demoMode) {
+    demoMessageCount += 1;
+    sessionStorage.setItem('cqx_demo_messages', String(demoMessageCount));
+    updateDemoMeter();
+  }
   appendChatMessage('user', message);
   appendChatMessage('assistant', 'Building context bundle...', true);
 
@@ -1369,11 +1447,15 @@ document.addEventListener('DOMContentLoaded', function() {
   if (token) {
     api('/api/auth/me').then(function(res) {
       if (res.error || !res.email) {
-        showToast(res.error || 'Session expired. Please log in again.', 'error');
+        showToast(res.error || 'Demo session expired. Start a new demo.', 'error');
         logout();
         return;
       }
       showApp(res, res.defaultDatabase);
     });
   }
+
+  window.addEventListener('beforeunload', function() {
+    if (demoMode) cleanupDemoSession(true);
+  });
 });

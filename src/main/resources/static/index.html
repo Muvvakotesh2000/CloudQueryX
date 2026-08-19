@@ -23,8 +23,7 @@
         <a href="#architecture">Why it matters</a>
       </div>
       <div class="nav-actions">
-        <button class="btn-text" onclick="showAuth('login')">Log in</button>
-        <button class="btn-primary-sm" onclick="showAuth('signup')">Get Started</button>
+        <button class="btn-primary-sm" onclick="startDemo()">Launch free demo</button>
       </div>
       <button class="mobile-toggle" onclick="toggleMobileMenu()">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
@@ -33,8 +32,7 @@
     <div class="mobile-menu" id="mobile-menu">
       <a href="#how-it-works" onclick="toggleMobileMenu()">How it works</a>
       <a href="#architecture" onclick="toggleMobileMenu()">Why it matters</a>
-      <button class="btn-text" onclick="showAuth('login'); toggleMobileMenu()">Log in</button>
-      <button class="btn-primary-sm" onclick="showAuth('signup'); toggleMobileMenu()">Get Started</button>
+      <button class="btn-primary-sm" onclick="startDemo(); toggleMobileMenu()">Launch free demo</button>
     </div>
   </nav>
 
@@ -44,7 +42,7 @@
       <h1>Every LLM call needs a flight plan.</h1>
       <p class="hero-desc">CloudQueryX retrieves, ranks, and trims the right context before your app calls a model. You keep the LLM. CloudQueryX handles what it needs to know.</p>
       <div class="hero-actions">
-        <button class="btn-primary" onclick="showAuth('signup')">Try the assistant demo</button>
+        <button class="btn-primary" onclick="startDemo()">Run the live demo</button>
         <a class="btn-outline" href="#how-it-works">See how it works</a>
       </div>
       <p class="hero-note">The assistant is a demo. The product is the context runtime behind it.</p>
@@ -189,37 +187,6 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
-     AUTH MODAL
-     ═══════════════════════════════════════════════════════════════ -->
-<div id="auth-modal" class="modal-overlay" style="display:none">
-  <div class="modal-card">
-    <button class="modal-close" onclick="closeAuth()">&times;</button>
-    <h2 id="auth-title">Log in to CloudQueryX</h2>
-    <p class="auth-sub" id="auth-subtitle">Access your context databases</p>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Log In</button>
-      <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
-    </div>
-    <form id="login-form" onsubmit="return handleLogin(event)">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="you@company.com" required>
-      <label>Password</label>
-      <input type="password" id="login-password" placeholder="Enter your password" required>
-      <button type="submit" class="btn-primary full">Log In</button>
-      <div id="login-error" class="form-error"></div>
-    </form>
-    <form id="signup-form" style="display:none" onsubmit="return handleSignup(event)">
-      <label>Email</label>
-      <input type="email" id="signup-email" placeholder="you@company.com" required>
-      <label>Password</label>
-      <input type="password" id="signup-password" placeholder="Minimum 8 characters" required minlength="8">
-      <button type="submit" class="btn-primary full">Create Account</button>
-      <div id="signup-error" class="form-error"></div>
-    </form>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════
      DASHBOARD
      ═══════════════════════════════════════════════════════════════ -->
 <div id="app-view" style="display:none">
@@ -289,7 +256,7 @@
             <span class="dot"></span>
             <span class="health-text">Checking</span>
           </span>
-          <button class="btn-text-light" onclick="logout()">Log out</button>
+          <button class="btn-text-light" onclick="endDemoAndReturn()">End demo</button>
         </div>
       </div>
     </aside>
@@ -361,6 +328,16 @@
         <div id="section-playground" class="section">
           <div class="chat-layout">
             <div class="chat-main">
+              <div class="demo-topbar">
+                <div>
+                  <strong>Temporary public demo</strong>
+                  <span>Your context is stored only for this browser session and deleted when you end the demo or close the tab.</span>
+                </div>
+                <div class="demo-meter">
+                  <span id="demo-message-count">0 / 20 messages</span>
+                  <button class="btn-sm" onclick="endDemoAndReturn()">End demo</button>
+                </div>
+              </div>
               <div id="chat-thread" class="chat-thread">
                 <div class="chat-message assistant">
                   <div class="chat-avatar">CQX</div>

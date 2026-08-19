@@ -178,6 +178,8 @@ public class ApiServer {
 
     private void registerRoutes() {
         server.createContext("/", this::serveStatic);
+        server.createContext("/api/demo/start", ex -> wrap(ex, this::handleDemoStart));
+        server.createContext("/api/demo/end", ex -> wrap(ex, this::handleDemoEnd));
         server.createContext("/api/auth/signup", ex -> wrap(ex, this::handleSignup));
         server.createContext("/api/auth/login", ex -> wrap(ex, this::handleLogin));
         server.createContext("/api/auth/logout", ex -> wrap(ex, this::handleLogout));
@@ -277,6 +279,45 @@ public class ApiServer {
     }
 
     // ─── Auth ──────────────────────────────────────────────────────────
+
+    private void handleDemoStart(HttpExchange ex) throws IOException {
+        if (!requireMethod(ex, "POST")) return;
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String email = "demo-" + suffix + "@cloudqueryx.local";
+        String password = UUID.randomUUID().toString() + UUID.randomUUID();
+        UserRepository.UserRow user = userRepo.register(email, password);
+        DatabaseRepository.DatabaseRow db = databaseRepo.create(user.id(), "Temporary Demo Context",
+                "Temporary context database. It is deleted when the demo session ends.");
+        String token = sessionRepo.createSession(user.id(), user.email());
+        Map<String, Object> response = authResponse(token, user, db);
+        response.put("demo", true);
+        response.put("limits", Map.of(
+                "messages", 20,
+                "contextWrites", 60,
+                "retention", "Deleted when you close the tab, leave the page, or end the demo."));
+        sendJson(ex, 201, response);
+    }
+
+    private void handleDemoEnd(HttpExchange ex) throws IOException {
+        if (!requireMethod(ex, "POST")) return;
+        String token = getToken(ex);
+        if (token == null) {
+            Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
+            token = JsonUtil.getString(body, "token");
+        }
+        if (token == null || token.isBlank()) {
+            sendJson(ex, 200, Map.of("message", "No demo session to clean up"));
+            return;
+        }
+        Optional<SessionRepository.SessionRow> session = sessionRepo.validate(token);
+        if (session.isPresent() && session.get().email().startsWith("demo-")
+                && session.get().email().endsWith("@cloudqueryx.local")) {
+            databaseRepo.listForUser(session.get().userId()).forEach(db ->
+                    databaseRepo.delete(db.id(), session.get().userId()));
+        }
+        sessionRepo.invalidate(token);
+        sendJson(ex, 200, Map.of("message", "Demo data deleted"));
+    }
 
     private void handleSignup(HttpExchange ex) throws IOException {
         if (!requireMethod(ex, "POST")) return;

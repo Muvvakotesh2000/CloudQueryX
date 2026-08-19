@@ -1210,6 +1210,8 @@ public class ApiServer {
         String contentType = path.endsWith(".html") ? "text/html" : path.endsWith(".css") ? "text/css"
                 : path.endsWith(".js") ? "application/javascript" : "application/octet-stream";
         ex.getResponseHeaders().set("Content-Type", contentType);
+        ex.getResponseHeaders().set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        ex.getResponseHeaders().set("Pragma", "no-cache");
         byte[] content = is.readAllBytes();
         is.close();
         ex.sendResponseHeaders(200, content.length);

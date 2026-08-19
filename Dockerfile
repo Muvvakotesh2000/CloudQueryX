@@ -5,7 +5,8 @@ COPY build.gradle settings.gradle ./
 COPY gradle ./gradle
 COPY src ./src
 
-RUN gradle build -x test --no-daemon
+ARG BUILD_REV=local
+RUN gradle clean build -x test --no-daemon
 
 FROM eclipse-temurin:17-jre-alpine
 
@@ -15,6 +16,7 @@ COPY --from=builder /app/build/libs/CloudQueryX-1.0.0.jar app.jar
 
 ENV JAVA_OPTS="-Xms128m -Xmx768m -XX:+UseG1GC -XX:MaxRAMPercentage=75 -XX:MaxGCPauseMillis=200"
 ENV CLOUDQUERYX_PORT=10000
+ENV CLOUDQUERYX_BUILD_REV=${BUILD_REV}
 
 EXPOSE 10000 8080 9090 9091
 

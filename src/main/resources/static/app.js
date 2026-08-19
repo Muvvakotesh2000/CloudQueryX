@@ -230,12 +230,12 @@ function showSection(name) {
 }
 
 var EXPLORER_TAB_INFO = {
-  memories: 'Scored facts about your user or app — preferences, decisions, conversation history. Each carries an importance score (0–1) so retrieval can prioritize what matters most. Example: "User prefers Python for data processing" (importance 0.9).',
-  sources: 'Documents, code, or logs that get automatically chunked and embedded for full-text and semantic search. Example: an architecture doc or a README.',
-  entities: 'Nodes in your knowledge graph — people, projects, tools, or concepts. Example: "Alice" (type PERSON).',
-  relationships: 'Weighted edges connecting two entities. Example: "Alice" —WORKS_ON→ "CloudQueryX".',
-  events: 'Timeline entries for things that happened — deployments, incidents, user actions. Example: "DEPLOY: Supabase database connected".',
-  vectors: 'Raw embeddings searchable directly by similarity, outside the memory/graph model — useful for custom embedding pipelines.'
+  memories: 'Facts, preferences, decisions, and conversation notes the assistant can recall later.',
+  sources: 'Longer text such as docs, code, logs, and notes. CloudQueryX chunks and searches this text.',
+  entities: 'Named things CloudQueryX understands: people, projects, tools, services, and models.',
+  relationships: 'Connections between entities, such as CloudQueryX USES Supabase.',
+  events: 'Timeline records such as decisions, deployments, incidents, and changes.',
+  vectors: 'Embedding records used for semantic search. Most users can ignore this unless they are testing retrieval.'
 };
 
 function switchExplorerTab(tab) {
@@ -296,20 +296,20 @@ function renderGettingStarted(dataCount, keyCount) {
   var steps = [
     {
       done: dataCount > 0,
-      title: 'Store your first piece of context',
-      desc: 'Add a memory or document in the Data Explorer — this is the raw material CloudQueryX retrieves later.',
-      action: 'Go to Data Explorer', fn: "showSection('explorer')"
+      title: 'Store useful context',
+      desc: 'Add a memory or source so the assistant has something real to retrieve.',
+      action: 'Open Stored Context', fn: "showSection('explorer')"
     },
     {
       done: !!localStorage.getItem('cqx_playground_used'),
-      title: 'Try the Playground',
-      desc: 'Chat with the context-aware assistant and watch it retrieve and auto-store context in real time.',
-      action: 'Open Playground', fn: "showSection('playground')"
+      title: 'Try the assistant demo',
+      desc: 'Ask a question and watch CloudQueryX choose context before the model answers.',
+      action: 'Open Assistant Demo', fn: "showSection('playground')"
     },
     {
       done: keyCount > 0,
       title: 'Generate an API key',
-      desc: 'Once you like what you see, create a scoped key so your own app can call the same store/recall/retrieve API.',
+      desc: 'Create a scoped key when you are ready to connect your own app to this context database.',
       action: 'Go to API Keys', fn: "showSection('api-keys')"
     }
   ];
@@ -447,7 +447,7 @@ function renderChatContext(bundle) {
   var box = document.getElementById('chat-context-summary');
   if (bundle.error) { box.innerHTML = '<div class="form-error">' + esc(bundle.error) + '</div>'; return; }
   var items = bundle.items || [];
-  if (items.length === 0) { box.innerHTML = '<p class="muted">No stored context matched this query.</p>'; return; }
+  if (items.length === 0) { box.innerHTML = '<p class="muted">No saved context matched. The LLM answered without CloudQueryX memory for this turn.</p>'; return; }
   box.innerHTML =
     '<div class="bundle-summary compact"><span>' + items.length + ' items</span><span>' +
     (bundle.estimatedTokens || 0) + ' tokens</span><span>' + esc(bundle.freshnessStatus || 'VALID') + '</span></div>' +

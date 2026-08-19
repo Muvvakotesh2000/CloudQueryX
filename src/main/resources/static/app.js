@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════════ */
 var token = sessionStorage.getItem('cqx_demo_token');
 var currentDbId = null;
-var currentSection = 'overview';
+var currentSection = 'playground';
 var currentExplorerTab = 'memories';
 var chatMemorySuggestions = [];
 var lastAutoSavedContext = [];
@@ -273,6 +273,7 @@ function checkHealth() {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function showSection(name) {
+  if (name !== 'playground' && name !== 'explorer') name = 'playground';
   currentSection = name;
   document.querySelectorAll('#db-view > .section').forEach(function(s) {
     s.classList.remove('active-section');
@@ -340,24 +341,22 @@ function loadOverviewData() {
     api('/api/sources'),
     api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'list_entities', limit: 500 }) }),
     api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'list_relationships', limit: 500 }) }),
-    api('/api/events?limit=10'),
-    api('/api/databases/' + currentDbId + '/api-keys')
+    api('/api/events?limit=10')
   ]).then(function(results) {
     var memCount = results[0].count || 0;
     var srcCount = (results[1].sources || []).length;
     var entCount = results[2].count || (results[2].entities || []).length;
     var relCount = results[3].count || (results[3].relationships || []).length;
     var events = results[4].events || [];
-    var keyCount = (results[5].apiKeys || results[5] || []).length || 0;
 
-    renderStatCards(memCount, srcCount, entCount, relCount, events.length, keyCount);
+    renderStatCards(memCount, srcCount, entCount, relCount, events.length);
     renderActivityFeed(events);
-    renderGettingStarted(memCount + srcCount, keyCount);
+    renderGettingStarted(memCount + srcCount);
   });
 }
 
 // ─── Getting Started checklist ──────────────────────────────────────
-function renderGettingStarted(dataCount, keyCount) {
+function renderGettingStarted(dataCount) {
   var card = document.getElementById('getting-started');
   if (localStorage.getItem('cqx_gs_dismissed')) { card.style.display = 'none'; return; }
 
@@ -373,12 +372,6 @@ function renderGettingStarted(dataCount, keyCount) {
       title: 'Try the assistant demo',
       desc: 'Ask a question and watch CloudQueryX choose context before the model answers.',
       action: 'Open Assistant Demo', fn: "showSection('playground')"
-    },
-    {
-      done: keyCount > 0,
-      title: 'Generate an API key',
-      desc: 'Create a scoped key when you are ready to connect your own app to this context database.',
-      action: 'Go to API Keys', fn: "showSection('api-keys')"
     }
   ];
 
@@ -403,14 +396,13 @@ function dismissGettingStarted() {
   document.getElementById('getting-started').style.display = 'none';
 }
 
-function renderStatCards(mem, src, ent, rel, evt, keys) {
+function renderStatCards(mem, src, ent, rel, evt) {
   var cards = [
     { label: 'Memories', value: mem, cls: 'memories', icon: 'M' },
     { label: 'Sources', value: src, cls: 'sources', icon: 'S' },
     { label: 'Entities', value: ent, cls: 'entities', icon: 'E' },
     { label: 'Relationships', value: rel, cls: 'relationships', icon: 'R' },
-    { label: 'Events', value: evt, cls: 'events', icon: 'Ev' },
-    { label: 'API Keys', value: keys, cls: 'apikeys', icon: 'K' }
+    { label: 'Events', value: evt, cls: 'events', icon: 'Ev' }
   ];
   document.getElementById('overview-stats').innerHTML = cards.map(function(c) {
     return '<div class="stat-card">' +

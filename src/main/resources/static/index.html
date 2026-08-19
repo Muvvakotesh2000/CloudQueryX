@@ -11,111 +11,105 @@
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     LANDING PAGE
-     ═══════════════════════════════════════════════════════════════ -->
 <div id="landing-view">
   <nav class="landing-nav">
     <div class="nav-container">
       <a href="/" class="logo-mark">CloudQueryX</a>
       <div class="nav-links">
-        <a href="#how-it-works">How it works</a>
-        <a href="#architecture">Why it matters</a>
+        <a href="#playground-preview">Playground</a>
+        <a href="#data-preview">Data</a>
       </div>
       <div class="nav-actions">
-        <button class="btn-primary-sm" onclick="startDemo()">Launch free demo</button>
+        <button class="btn-primary-sm" onclick="startDemo()">Start free playground</button>
       </div>
       <button class="mobile-toggle" onclick="toggleMobileMenu()">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
       </button>
     </div>
     <div class="mobile-menu" id="mobile-menu">
-      <a href="#how-it-works" onclick="toggleMobileMenu()">How it works</a>
-      <a href="#architecture" onclick="toggleMobileMenu()">Why it matters</a>
-      <button class="btn-primary-sm" onclick="startDemo(); toggleMobileMenu()">Launch free demo</button>
+      <a href="#playground-preview" onclick="toggleMobileMenu()">Playground</a>
+      <a href="#data-preview" onclick="toggleMobileMenu()">Data</a>
+      <button class="btn-primary-sm" onclick="startDemo(); toggleMobileMenu()">Start free playground</button>
     </div>
   </nav>
 
-  <section class="hero">
-    <div class="hero-content">
-      <p class="hero-tag">Context memory for AI apps</p>
-      <h1>Every LLM call needs a flight plan.</h1>
-      <p class="hero-desc">CloudQueryX retrieves, ranks, and trims the right context before your app calls a model. You keep the LLM. CloudQueryX handles what it needs to know.</p>
+  <section class="playground-hero" id="playground-preview">
+    <div class="playground-copy">
+      <p class="hero-tag">Public context playground</p>
+      <h1>Talk to the demo. Watch the memory engine work.</h1>
+      <p class="hero-desc">CloudQueryX is a context runtime for LLM apps. The assistant is only the demo surface: behind every reply, CloudQueryX stores useful context, retrieves memories, ranks evidence, and builds a token-budgeted bundle.</p>
       <div class="hero-actions">
-        <button class="btn-primary" onclick="startDemo()">Run the live demo</button>
-        <a class="btn-outline" href="#how-it-works">See how it works</a>
+        <button class="btn-primary" onclick="startDemo()">Open playground</button>
+        <a class="btn-outline" href="#data-preview">See stored data</a>
       </div>
-      <p class="hero-note">The assistant is a demo. The product is the context runtime behind it.</p>
+      <p class="hero-note">Free demo limit: 20 messages. Temporary data is deleted when the demo ends or the tab closes.</p>
     </div>
-    <div class="tower-card" aria-label="CloudQueryX context tower visualization">
-      <div class="tower-header">
-        <div>
-          <span class="tower-kicker">LIVE CONTEXT TOWER</span>
-          <strong>Query preflight</strong>
+
+    <div class="playground-shell" aria-label="CloudQueryX playground preview">
+      <div class="playground-window">
+        <div class="window-top">
+          <span></span><span></span><span></span>
+          <strong>CloudQueryX Playground</strong>
         </div>
-        <span class="tower-status"><span></span>ACTIVE</span>
-      </div>
-      <div class="radar">
-        <span class="radar-ring one"></span>
-        <span class="radar-ring two"></span>
-        <span class="radar-sweep"></span>
-        <span class="signal memory">MEM</span>
-        <span class="signal source">DOC</span>
-        <span class="signal graph">GRAPH</span>
-        <span class="signal event">EVT</span>
-        <div class="bundle-core">
-          <span>CONTEXT</span>
-          <strong>8 items</strong>
+        <div class="preview-chat">
+          <div class="preview-message user">Remember that I am building CloudQueryX as a provider-neutral context runtime.</div>
+          <div class="preview-message assistant">
+            Stored as memory, linked to project entity, and logged as a context event.
+          </div>
+          <div class="preview-message user">What context would you use to explain the architecture?</div>
+          <div class="preview-message assistant">
+            Retrieved 6 items: memory, source chunk, graph relationship, event, and pgvector match.
+          </div>
+        </div>
+        <div class="preview-composer">
+          <span>Ask anything about your stored context...</span>
+          <button onclick="startDemo()">Start</button>
         </div>
       </div>
-      <div class="tower-strip">
-        <div><span>RETRIEVED</span><strong>47</strong></div>
-        <div><span>RANKED</span><strong>12</strong></div>
-        <div><span>SELECTED</span><strong>8</strong></div>
-        <div><span>TOKENS</span><strong>3,812</strong></div>
-      </div>
-      <div class="handoff-panel">
-        <span>Formatted context</span>
-        <strong>Cleared for model handoff</strong>
+      <div class="context-rail">
+        <div class="rail-card active"><span>Memory</span><strong>User goal stored</strong><small>importance 0.94</small></div>
+        <div class="rail-card"><span>Source</span><strong>Architecture note</strong><small>text + vector match</small></div>
+        <div class="rail-card"><span>Graph</span><strong>CloudQueryX uses pgvector</strong><small>relationship match</small></div>
+        <div class="rail-card"><span>Bundle</span><strong>3,812 tokens</strong><small>ready for LLM</small></div>
       </div>
     </div>
   </section>
 
-  <section class="capabilities" id="how-it-works">
+  <section class="capabilities" id="data-preview">
     <div class="section-inner">
-      <h2>How CloudQueryX Works</h2>
-      <p class="section-lede">Most demos show a chatbot. CloudQueryX shows the part behind the chatbot: what gets remembered, what gets retrieved, and why it was selected.</p>
+      <h2>Home and Data, nothing hidden.</h2>
+      <p class="section-lede">The public demo has only two surfaces: Home is the playground, Data shows exactly what CloudQueryX stored and retrieved.</p>
       <div class="pipeline-strip">
-        <div><span>01</span><strong>Store</strong><small>memory, docs, graph, events</small></div>
-        <div><span>02</span><strong>Retrieve</strong><small>vector, text, freshness</small></div>
-        <div><span>03</span><strong>Rank</strong><small>relevance and confidence</small></div>
-        <div><span>04</span><strong>Budget</strong><small>trim to token limit</small></div>
-        <div><span>05</span><strong>Handoff</strong><small>formatted context</small></div>
+        <div><span>01</span><strong>Chat</strong><small>ask, teach, correct</small></div>
+        <div><span>02</span><strong>Store</strong><small>memories, sources, graph, events</small></div>
+        <div><span>03</span><strong>Retrieve</strong><small>text, vectors, freshness</small></div>
+        <div><span>04</span><strong>Explain</strong><small>scores and reasons</small></div>
+        <div><span>05</span><strong>Delete</strong><small>temporary demo cleanup</small></div>
       </div>
       <div class="cap-grid">
         <div class="cap-item">
-          <h3>1. Store what matters</h3>
-          <p>Save facts, preferences, decisions, documents, source snippets, entities, relationships, and events in one isolated context database.</p>
+          <h3>Memory</h3>
+          <p>Facts, preferences, decisions, feedback, and conversation notes that the assistant can recall later.</p>
         </div>
         <div class="cap-item">
-          <h3>2. Retrieve with evidence</h3>
-          <p>Search memories, source chunks, graph relationships, events, full text, and pgvector embeddings. Every result explains why it matched.</p>
+          <h3>Sources</h3>
+          <p>Docs, logs, code snippets, notes, markdown, and config text split into searchable chunks.</p>
         </div>
         <div class="cap-item">
-          <h3>3. Build an LLM-ready bundle</h3>
-          <p>Rank, trim, and format the selected context into a token-budgeted bundle your app can send to any LLM provider.</p>
+          <h3>Graph</h3>
+          <p>Entities and relationships that connect people, projects, services, databases, and models.</p>
         </div>
         <div class="cap-item">
-          <h3>Transparent memory</h3>
-          <p>Users can see stored context instead of guessing what the assistant remembers. Bad or outdated facts can be reviewed and removed.</p>
+          <h3>Events</h3>
+          <p>Timeline signals that help CloudQueryX rank fresh changes and important decisions.</p>
         </div>
         <div class="cap-item">
-          <h3>Provider neutral</h3>
-          <p>CloudQueryX does not own the final answer. It prepares context, then your app decides which model should answer.</p>
+          <h3>Bundles</h3>
+          <p>Retrieved data is ranked, trimmed, explained, and formatted before the LLM call.</p>
         </div>
         <div class="cap-item">
-          <h3>One scoped API key</h3>
-          <p>External apps use a database-scoped key, so context stays isolated per user and per context database.</p>
+          <h3>Temporary demo</h3>
+          <p>The playground is intentionally limited and clears its data when the browser session ends.</p>
         </div>
       </div>
     </div>
@@ -209,43 +203,14 @@
       </div>
 
       <nav class="sidebar-nav">
-        <a class="sidebar-item active" data-section="overview">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+        <a class="sidebar-item active" data-section="playground">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l3-3-3-3M8 12h4"/></svg>
           Home
         </a>
-        <a class="sidebar-item" data-section="playground">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l3-3-3-3M8 12h4"/></svg>
-          Assistant Demo
-        </a>
 
-        <div class="sidebar-group-label">Data</div>
         <a class="sidebar-item" data-section="explorer">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="5" cy="4" r="0.5" fill="currentColor"/><circle cx="5" cy="8" r="0.5" fill="currentColor"/><circle cx="5" cy="12" r="0.5" fill="currentColor"/></svg>
-          Stored Context
-        </a>
-        <a class="sidebar-item" data-section="graph">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="12" r="2"/><path d="M6 4h4M5.5 5.5L7 10.5M10.5 5.5L9 10.5"/></svg>
-          Context Graph
-        </a>
-
-        <div class="sidebar-group-label">Developer</div>
-        <a class="sidebar-item" data-section="api-reference">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 4L2 8l3 4M11 4l3 4-3 4M9 2L7 14"/></svg>
-          API Docs
-        </a>
-        <a class="sidebar-item" data-section="api-keys">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="8" r="3"/><path d="M8 8h6M12 6v4"/></svg>
-          API Keys
-        </a>
-        <a class="sidebar-item" data-section="webhooks">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4l6 4 6-4M2 4v8l6 4 6-4V4"/></svg>
-          Webhooks
-        </a>
-
-        <div class="sidebar-group-label">System</div>
-        <a class="sidebar-item" data-section="settings">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.9 2.9l1.4 1.4M11.7 11.7l1.4 1.4M2.9 13.1l1.4-1.4M11.7 4.3l1.4-1.4"/></svg>
-          System
+          Data
         </a>
       </nav>
 
@@ -303,14 +268,6 @@
                   <div class="quick-action" onclick="showSection('explorer')">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
                     Review Stored Context
-                  </div>
-                  <div class="quick-action" onclick="showSection('api-keys')">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="8" r="3"/><path d="M8 8h6M12 6v4"/></svg>
-                    Generate API Key
-                  </div>
-                  <div class="quick-action" onclick="showSection('api-reference')">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 4L2 8l3 4M11 4l3 4-3 4"/></svg>
-                    API Docs
                   </div>
                 </div>
               </div>
@@ -505,88 +462,6 @@
                 <button class="graph-detail-close" onclick="closeGraphDetail()">&times;</button>
                 <div id="graph-detail-content"></div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── API REFERENCE ────────────────────────────────── -->
-        <div id="section-api-reference" class="section">
-          <div class="api-layout">
-            <div class="api-sidebar-inner">
-              <div class="api-group-label">Context</div>
-              <div class="api-endpoint-item active" data-endpoint="store" onclick="selectEndpoint('store')">
-                <span class="method post">POST</span>
-                <code>/api/v1/store</code>
-              </div>
-              <div class="api-endpoint-item" data-endpoint="recall" onclick="selectEndpoint('recall')">
-                <span class="method post">POST</span>
-                <code>/api/v1/recall</code>
-              </div>
-              <div class="api-endpoint-item" data-endpoint="retrieve" onclick="selectEndpoint('retrieve')">
-                <span class="method post">POST</span>
-                <code>/api/v1/retrieve</code>
-              </div>
-              <div class="api-endpoint-item" data-endpoint="build" onclick="selectEndpoint('build')">
-                <span class="method post">POST</span>
-                <code>/api/v1/context/build</code>
-              </div>
-            </div>
-            <div class="api-detail" id="api-detail">
-              <div id="api-detail-content"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── API KEYS ─────────────────────────────────────── -->
-        <div id="section-api-keys" class="section">
-          <div class="section-page">
-            <div class="section-header-row">
-              <div>
-                <h2>API Keys</h2>
-                <p class="muted">Connect your own app to this context runtime</p>
-              </div>
-              <button class="btn-primary-sm" onclick="showCreateKeyModal()">+ Create Key</button>
-            </div>
-            <div id="api-key-list" style="margin-top:20px"></div>
-            <div id="api-key-reveal"></div>
-          </div>
-        </div>
-
-        <!-- ── WEBHOOKS ─────────────────────────────────────── -->
-        <div id="section-webhooks" class="section">
-          <div class="section-page">
-            <div class="section-header-row">
-              <div>
-                <h2>Webhooks</h2>
-                <p class="muted">Notify another service when CloudQueryX stores or updates context</p>
-              </div>
-              <button class="btn-primary-sm" onclick="showCreateWebhookModal()">+ Create Webhook</button>
-            </div>
-            <div id="webhook-list" style="margin-top:20px"></div>
-          </div>
-        </div>
-
-        <!-- ── SETTINGS ─────────────────────────────────────── -->
-        <div id="section-settings" class="section">
-          <div class="section-page">
-            <div class="section-header">
-              <h2>System</h2>
-              <p>Database configuration and runtime health</p>
-            </div>
-            <div class="settings-grid">
-              <div class="card">
-                <h3>Database</h3>
-                <div id="settings-db-info"></div>
-              </div>
-              <div class="card">
-                <h3>System Health</h3>
-                <div id="settings-health-info"></div>
-              </div>
-            </div>
-            <div class="danger-zone">
-              <h3>Danger Zone</h3>
-              <p class="muted" style="margin-bottom:12px">These actions are destructive and cannot be undone.</p>
-              <button class="btn-danger" onclick="confirmDeleteAllData()">Delete All Data</button>
             </div>
           </div>
         </div>

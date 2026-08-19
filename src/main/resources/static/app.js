@@ -78,6 +78,26 @@ async function startDemo() {
   updateDemoMeter();
 }
 
+async function ensureDemoSession() {
+  if (token && currentDbId) return true;
+  showToast('Starting a fresh temporary demo...', 'info');
+  var res = await api('/api/demo/start', { method: 'POST', body: JSON.stringify({}) });
+  if (res.error) {
+    showToast(res.error, 'error');
+    return false;
+  }
+  token = res.token;
+  demoMode = true;
+  demoMessageCount = 0;
+  sessionStorage.setItem('cqx_demo_token', token);
+  sessionStorage.setItem('cqx_demo_mode', '1');
+  sessionStorage.setItem('cqx_demo_messages', '0');
+  localStorage.removeItem('cqx_token');
+  showApp(res.user, res.defaultDatabase);
+  updateDemoMeter();
+  return true;
+}
+
 function updateDemoMeter() {
   var el = document.getElementById('demo-message-count');
   if (el) el.textContent = demoMessageCount + ' / ' + DEMO_MESSAGE_LIMIT + ' messages';
@@ -447,6 +467,11 @@ async function sendAssistantMessage() {
   var error = document.getElementById('chat-error');
   var message = input.value.trim();
   if (!message) return;
+  var ready = await ensureDemoSession();
+  if (!ready) {
+    error.textContent = 'Could not start a temporary demo session. Please refresh and try again.';
+    return;
+  }
   if (demoMode && demoMessageCount >= DEMO_MESSAGE_LIMIT) {
     error.textContent = 'Demo limit reached. End the demo to clear the temporary data and start again.';
     showToast('Demo limit reached. Start a fresh demo to continue.', 'error');
@@ -476,6 +501,31 @@ async function sendAssistantMessage() {
       includeEvents: true
     })
   });
+  if (res.error && res.statusCode === 401) {
+    sessionStorage.removeItem('cqx_demo_token');
+    sessionStorage.removeItem('cqx_demo_mode');
+    sessionStorage.removeItem('cqx_demo_messages');
+    token = null;
+    currentDbId = null;
+    demoMode = false;
+    demoMessageCount = 0;
+    var recovered = await ensureDemoSession();
+    if (recovered) {
+      res = await api('/api/assistant/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          message: message,
+          targetModel: 'medium-context-model',
+          tokenBudget: 8000,
+          mode: inferChatMode(message),
+          includeMemories: true,
+          includeSources: true,
+          includeGraph: true,
+          includeEvents: true
+        })
+      });
+    }
+  }
   removeTypingMessage();
   if (res.error) {
     error.textContent = res.error;

@@ -41,46 +41,45 @@
   <section class="hero">
     <div class="hero-content">
       <p class="hero-tag">Context memory for AI apps</p>
-      <h1>Your AI should remember the right things, not everything.</h1>
-      <p class="hero-desc">CloudQueryX sits between your application and any LLM. It stores useful facts, source text, relationships, and events, then builds a focused context bundle before each model call.</p>
+      <h1>Every LLM call needs a flight plan.</h1>
+      <p class="hero-desc">CloudQueryX retrieves, ranks, and trims the right context before your app calls a model. You keep the LLM. CloudQueryX handles what it needs to know.</p>
       <div class="hero-actions">
         <button class="btn-primary" onclick="showAuth('signup')">Try the assistant demo</button>
         <a class="btn-outline" href="#how-it-works">See how it works</a>
       </div>
       <p class="hero-note">The assistant is a demo. The product is the context runtime behind it.</p>
     </div>
-    <div class="hero-code">
-      <div class="hero-code-header">
-        <span class="hero-code-dot r"></span>
-        <span class="hero-code-dot y"></span>
-        <span class="hero-code-dot g"></span>
-        <span>cloudqueryx.py</span>
+    <div class="tower-card" aria-label="CloudQueryX context tower visualization">
+      <div class="tower-header">
+        <div>
+          <span class="tower-kicker">LIVE CONTEXT TOWER</span>
+          <strong>Query preflight</strong>
+        </div>
+        <span class="tower-status"><span></span>ACTIVE</span>
       </div>
-      <pre><span class="hl-comment"># Store context as your app learns</span>
-<span class="hl-kw">import</span> requests
-
-response = requests.<span class="hl-fn">post</span>(
-    <span class="hl-str">"https://your-instance/api/v1/store"</span>,
-    headers={<span class="hl-str">"Authorization"</span>: <span class="hl-str">"Bearer cqx_..."</span>},
-    json={
-        <span class="hl-str">"type"</span>: <span class="hl-str">"memory"</span>,
-        <span class="hl-str">"memoryType"</span>: <span class="hl-str">"FACT"</span>,
-        <span class="hl-str">"content"</span>: <span class="hl-str">"User prefers dark mode"</span>,
-        <span class="hl-str">"importance"</span>: <span class="hl-num">0.9</span>
-    }
-)
-
-<span class="hl-comment"># Build context before an LLM call</span>
-bundle = requests.<span class="hl-fn">post</span>(
-    <span class="hl-str">"https://your-instance/api/v1/context/build"</span>,
-    headers={<span class="hl-str">"Authorization"</span>: <span class="hl-str">"Bearer cqx_..."</span>},
-    json={
-        <span class="hl-str">"query"</span>: <span class="hl-str">"What are the user's preferences?"</span>,
-        <span class="hl-str">"tokenBudget"</span>: <span class="hl-num">4000</span>
-    }
-).<span class="hl-fn">json</span>()
-
-<span class="hl-comment"># Send bundle["formattedContext"] to any model</span></pre>
+      <div class="radar">
+        <span class="radar-ring one"></span>
+        <span class="radar-ring two"></span>
+        <span class="radar-sweep"></span>
+        <span class="signal memory">MEM</span>
+        <span class="signal source">DOC</span>
+        <span class="signal graph">GRAPH</span>
+        <span class="signal event">EVT</span>
+        <div class="bundle-core">
+          <span>CONTEXT</span>
+          <strong>8 items</strong>
+        </div>
+      </div>
+      <div class="tower-strip">
+        <div><span>RETRIEVED</span><strong>47</strong></div>
+        <div><span>RANKED</span><strong>12</strong></div>
+        <div><span>SELECTED</span><strong>8</strong></div>
+        <div><span>TOKENS</span><strong>3,812</strong></div>
+      </div>
+      <div class="handoff-panel">
+        <span>Formatted context</span>
+        <strong>Cleared for model handoff</strong>
+      </div>
     </div>
   </section>
 
@@ -88,6 +87,13 @@ bundle = requests.<span class="hl-fn">post</span>(
     <div class="section-inner">
       <h2>How CloudQueryX Works</h2>
       <p class="section-lede">Most demos show a chatbot. CloudQueryX shows the part behind the chatbot: what gets remembered, what gets retrieved, and why it was selected.</p>
+      <div class="pipeline-strip">
+        <div><span>01</span><strong>Store</strong><small>memory, docs, graph, events</small></div>
+        <div><span>02</span><strong>Retrieve</strong><small>vector, text, freshness</small></div>
+        <div><span>03</span><strong>Rank</strong><small>relevance and confidence</small></div>
+        <div><span>04</span><strong>Budget</strong><small>trim to token limit</small></div>
+        <div><span>05</span><strong>Handoff</strong><small>formatted context</small></div>
+      </div>
       <div class="cap-grid">
         <div class="cap-item">
           <h3>1. Store what matters</h3>
@@ -125,10 +131,20 @@ bundle = requests.<span class="hl-fn">post</span>(
         <div class="compare-column">
           <h3>Typical AI app</h3>
           <p>Application code stitches together a vector DB, SQL tables, custom memory rows, graph lookup, ranking, and prompt formatting before every LLM call.</p>
+          <ul>
+            <li>Context logic scattered across app code</li>
+            <li>Hard to explain why a fact was selected</li>
+            <li>Token budget handled late in the prompt</li>
+          </ul>
         </div>
         <div class="compare-column strong">
           <h3>With CloudQueryX</h3>
           <p>Your app asks CloudQueryX for a context bundle. CloudQueryX retrieves, ranks, explains, trims, and formats the context in one place.</p>
+          <ul>
+            <li>One context runtime before the model call</li>
+            <li>Every item includes scores and reasons</li>
+            <li>Context is selected before handoff</li>
+          </ul>
         </div>
       </div>
       <div class="arch-flow">

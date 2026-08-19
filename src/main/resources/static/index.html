@@ -282,6 +282,16 @@ bundle = requests.<span class="hl-fn">post</span>(
               <h2>Overview</h2>
               <p>Your context database at a glance</p>
             </div>
+            <div class="overview-explainer">
+              <p><strong>What you're looking at:</strong> a context database — an isolated memory store CloudQueryX keeps for one AI application. Anything you store here (facts, documents, graph entities, timeline events) becomes retrievable context your app can pull into any LLM call via the API.</p>
+            </div>
+            <div id="getting-started" class="card getting-started-card" style="display:none">
+              <div class="card-head">
+                <h3>Getting Started</h3>
+                <button class="gs-dismiss" onclick="dismissGettingStarted()" title="Dismiss">&times;</button>
+              </div>
+              <div class="gs-steps" id="gs-steps"></div>
+            </div>
             <div class="stats-grid" id="overview-stats"></div>
             <div class="overview-grid">
               <div class="card">
@@ -328,6 +338,12 @@ bundle = requests.<span class="hl-fn">post</span>(
                   </div>
                 </div>
               </div>
+              <div class="chat-examples" id="chat-examples">
+                <span class="chat-example-label">Try:</span>
+                <button type="button" class="chip" onclick="fillChatExample(this)">My name is Alex and I lead the backend team.</button>
+                <button type="button" class="chip" onclick="fillChatExample(this)">What do you know about me so far?</button>
+                <button type="button" class="chip" onclick="fillChatExample(this)">We decided to deploy on Render instead of AWS.</button>
+              </div>
               <div class="chat-composer">
                 <textarea id="chat-input" rows="2" placeholder="Ask something or store a fact..."></textarea>
                 <button class="btn-primary" onclick="sendAssistantMessage()">Send</button>
@@ -341,10 +357,12 @@ bundle = requests.<span class="hl-fn">post</span>(
               <div class="side-panel" id="chat-side-panel">
                 <div class="side-section">
                   <h4>Context Used</h4>
+                  <p class="side-hint">What CloudQueryX retrieved from your stored data and sent to the LLM as background for this reply.</p>
                   <div id="chat-context-summary" class="side-body"><p class="muted">No context used yet.</p></div>
                 </div>
                 <div class="side-section">
                   <h4>Stored Context</h4>
+                  <p class="side-hint">New facts, entities, relationships, or events the model picked out of this conversation and saved automatically.</p>
                   <div id="chat-memory-suggestions" class="side-body"><p class="muted">Context will be stored automatically after each response.</p></div>
                 </div>
               </div>
@@ -367,6 +385,7 @@ bundle = requests.<span class="hl-fn">post</span>(
               <button class="subtab" data-subtab="events">Events</button>
               <button class="subtab" data-subtab="vectors">Vectors</button>
             </div>
+            <div class="explorer-tab-desc" id="explorer-tab-desc"></div>
 
             <!-- Memories -->
             <div id="explorer-memories" class="explorer-panel active">

@@ -356,6 +356,31 @@ textarea { resize: vertical; min-height: 60px; }
 .empty-state h2 { margin-bottom: 8px; }
 .empty-state p { color: var(--muted); }
 
+/* ─── Overview explainer + Getting Started ──────────────────── */
+.overview-explainer {
+  background: var(--brand-light); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: var(--ink-secondary);
+}
+.overview-explainer strong { color: var(--ink); }
+
+.getting-started-card { margin-bottom: 24px; }
+.gs-dismiss { background: none; border: none; font-size: 18px; color: var(--muted); cursor: pointer; line-height: 1; }
+.gs-dismiss:hover { color: var(--ink); }
+.gs-steps { display: flex; flex-direction: column; gap: 14px; }
+.gs-step { display: flex; align-items: flex-start; gap: 14px; padding: 10px 0; border-top: 1px solid var(--border); }
+.gs-step:first-child { border-top: none; padding-top: 0; }
+.gs-step-icon {
+  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  font-size: 12px; color: var(--surface); margin-top: 1px;
+}
+.gs-step.done .gs-step-icon { background: var(--success); border-color: var(--success); }
+.gs-step-body { flex: 1; }
+.gs-step-title { font-weight: 600; font-size: 13px; }
+.gs-step.done .gs-step-title { color: var(--muted); text-decoration: line-through; }
+.gs-step-desc { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.gs-step .btn-sm { flex-shrink: 0; align-self: center; }
+
 /* ═══════════════════════════════════════════════════════════════
    OVERVIEW — Stats + Activity
    ═══════════════════════════════════════════════════════════════ */
@@ -432,8 +457,19 @@ textarea { resize: vertical; min-height: 60px; }
 .chat-bubble strong { font-weight: 600; }
 .typing-message .chat-bubble { opacity: 0.6; }
 
+.chat-examples {
+  padding: 10px 24px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  border-top: 1px solid var(--border); background: var(--surface); padding-top: 12px;
+}
+.chat-example-label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.chip {
+  background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 12px; font-size: 12px; color: var(--ink-secondary); cursor: pointer;
+}
+.chip:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+
 .chat-composer {
-  padding: 16px 24px; border-top: 1px solid var(--border);
+  padding: 12px 24px 16px; border-top: none;
   display: flex; gap: 10px; align-items: flex-end; background: var(--surface);
 }
 .chat-composer textarea {
@@ -458,7 +494,8 @@ textarea { resize: vertical; min-height: 60px; }
 .side-toggle:hover { color: var(--ink); }
 .side-panel { padding: 16px; overflow-y: auto; flex: 1; }
 .side-section { margin-bottom: 20px; }
-.side-section h4 { margin-bottom: 10px; }
+.side-section h4 { margin-bottom: 4px; }
+.side-hint { font-size: 11.5px; color: var(--muted); line-height: 1.4; margin-bottom: 10px; }
 .side-body { font-size: 13px; }
 
 .context-chip {
@@ -554,6 +591,12 @@ textarea { resize: vertical; min-height: 60px; }
 .type-badge.user_profile { background: #ecfdf5; color: #059669; }
 
 .empty-table { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+.empty-table-title { color: var(--ink); font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.empty-table .muted { max-width: 420px; margin: 0 auto 16px; }
+
+.explorer-tab-desc {
+  font-size: 12.5px; color: var(--muted); margin: -8px 0 16px; max-width: 780px; line-height: 1.5;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    KNOWLEDGE GRAPH

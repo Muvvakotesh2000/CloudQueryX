@@ -22,6 +22,11 @@ function api(path, opts) {
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 function previewText(t, max) { t = t || ''; return t.length > (max || 120) ? t.substring(0, max || 120) + '...' : t; }
+function emptyTableHtml(title, desc, addFn, addLabel) {
+  return '<div class="empty-table"><p class="empty-table-title">' + esc(title) + '</p>' +
+    '<p class="muted">' + esc(desc) + '</p>' +
+    '<button class="btn-primary-sm" onclick="' + addFn + '">+ ' + esc(addLabel) + '</button></div>';
+}
 
 // ═══════════════════════════════════════════════════════════════
 // TOAST
@@ -174,6 +179,15 @@ function showSection(name) {
   if (window.innerWidth <= 768) closeSidebar();
 }
 
+var EXPLORER_TAB_INFO = {
+  memories: 'Scored facts about your user or app — preferences, decisions, conversation history. Each carries an importance score (0–1) so retrieval can prioritize what matters most. Example: "User prefers Python for data processing" (importance 0.9).',
+  sources: 'Documents, code, or logs that get automatically chunked and embedded for full-text and semantic search. Example: an architecture doc or a README.',
+  entities: 'Nodes in your knowledge graph — people, projects, tools, or concepts. Example: "Alice" (type PERSON).',
+  relationships: 'Weighted edges connecting two entities. Example: "Alice" —WORKS_ON→ "CloudQueryX".',
+  events: 'Timeline entries for things that happened — deployments, incidents, user actions. Example: "DEPLOY: Supabase database connected".',
+  vectors: 'Raw embeddings searchable directly by similarity, outside the memory/graph model — useful for custom embedding pipelines.'
+};
+
 function switchExplorerTab(tab) {
   currentExplorerTab = tab;
   document.querySelectorAll('#explorer-tabs .subtab').forEach(function(t) {
@@ -182,6 +196,8 @@ function switchExplorerTab(tab) {
   document.querySelectorAll('.explorer-panel').forEach(function(p) { p.classList.remove('active'); });
   var panel = document.getElementById('explorer-' + tab);
   if (panel) panel.classList.add('active');
+  var desc = document.getElementById('explorer-tab-desc');
+  if (desc) desc.textContent = EXPLORER_TAB_INFO[tab] || '';
   loadExplorerTab(tab);
 }
 
@@ -218,7 +234,55 @@ function loadOverviewData() {
 
     renderStatCards(memCount, srcCount, entCount, relCount, events.length, keyCount);
     renderActivityFeed(events);
+    renderGettingStarted(memCount + srcCount, keyCount);
   });
+}
+
+// ─── Getting Started checklist ──────────────────────────────────────
+function renderGettingStarted(dataCount, keyCount) {
+  var card = document.getElementById('getting-started');
+  if (localStorage.getItem('cqx_gs_dismissed')) { card.style.display = 'none'; return; }
+
+  var steps = [
+    {
+      done: dataCount > 0,
+      title: 'Store your first piece of context',
+      desc: 'Add a memory or document in the Data Explorer — this is the raw material CloudQueryX retrieves later.',
+      action: 'Go to Data Explorer', fn: "showSection('explorer')"
+    },
+    {
+      done: !!localStorage.getItem('cqx_playground_used'),
+      title: 'Try the Playground',
+      desc: 'Chat with the context-aware assistant and watch it retrieve and auto-store context in real time.',
+      action: 'Open Playground', fn: "showSection('playground')"
+    },
+    {
+      done: keyCount > 0,
+      title: 'Generate an API key',
+      desc: 'Once you like what you see, create a scoped key so your own app can call the same store/recall/retrieve API.',
+      action: 'Go to API Keys', fn: "showSection('api-keys')"
+    }
+  ];
+
+  var allDone = steps.every(function(s) { return s.done; });
+  if (allDone) { card.style.display = 'none'; return; }
+
+  card.style.display = '';
+  document.getElementById('gs-steps').innerHTML = steps.map(function(s) {
+    return '<div class="gs-step ' + (s.done ? 'done' : '') + '">' +
+      '<div class="gs-step-icon">' + (s.done ? '✓' : '') + '</div>' +
+      '<div class="gs-step-body">' +
+        '<div class="gs-step-title">' + esc(s.title) + '</div>' +
+        '<div class="gs-step-desc">' + esc(s.desc) + '</div>' +
+      '</div>' +
+      (s.done ? '' : '<button class="btn-sm" onclick="' + s.fn + '">' + esc(s.action) + '</button>') +
+      '</div>';
+  }).join('');
+}
+
+function dismissGettingStarted() {
+  localStorage.setItem('cqx_gs_dismissed', '1');
+  document.getElementById('getting-started').style.display = 'none';
 }
 
 function renderStatCards(mem, src, ent, rel, evt, keys) {
@@ -262,6 +326,12 @@ function toggleChatSide() {
   document.getElementById('chat-side').classList.toggle('collapsed');
 }
 
+function fillChatExample(btn) {
+  var input = document.getElementById('chat-input');
+  input.value = btn.textContent;
+  input.focus();
+}
+
 async function sendAssistantMessage() {
   var input = document.getElementById('chat-input');
   var error = document.getElementById('chat-error');
@@ -269,6 +339,7 @@ async function sendAssistantMessage() {
   if (!message) return;
   error.textContent = '';
   input.value = '';
+  localStorage.setItem('cqx_playground_used', '1');
   appendChatMessage('user', message);
   appendChatMessage('assistant', 'Building context bundle...', true);
 
@@ -470,6 +541,8 @@ function inferSourceType(text) {
 // DATA EXPLORER
 // ═══════════════════════════════════════════════════════════════
 function loadExplorerTab(tab) {
+  var desc = document.getElementById('explorer-tab-desc');
+  if (desc) desc.textContent = EXPLORER_TAB_INFO[tab] || '';
   switch (tab) {
     case 'memories': loadMemoryTable(); break;
     case 'sources': loadSourceTable(); break;
@@ -483,7 +556,7 @@ async function loadMemoryTable() {
   var res = await api('/api/memory', { method: 'POST', body: JSON.stringify({ action: 'context', maxRecords: 200 }) });
   var items = res.context || [];
   var container = document.getElementById('memory-table-container');
-  if (items.length === 0) { container.innerHTML = '<div class="empty-table">No memories stored yet.</div>'; return; }
+  if (items.length === 0) { container.innerHTML = emptyTableHtml('No memories stored yet.', 'Memories are scored facts like preferences, decisions, or conversation history.', 'showAddMemoryModal()', 'Add your first memory'); return; }
   container.innerHTML = '<table class="data-table" id="memory-table"><thead><tr>' +
     '<th>Type</th><th>Content</th><th>Importance</th><th>Scope</th><th>ID</th>' +
     '</tr></thead><tbody>' +
@@ -515,7 +588,7 @@ async function loadSourceTable() {
   var res = await api('/api/sources');
   var items = res.sources || [];
   var container = document.getElementById('source-table-container');
-  if (items.length === 0) { container.innerHTML = '<div class="empty-table">No sources stored yet.</div>'; return; }
+  if (items.length === 0) { container.innerHTML = emptyTableHtml('No sources stored yet.', 'Sources are documents, code, or logs that get chunked and embedded automatically.', 'showAddSourceModal()', 'Add your first source'); return; }
   container.innerHTML = '<table class="data-table"><thead><tr>' +
     '<th>Type</th><th>Name</th><th>Version</th><th>Status</th><th>ID</th>' +
     '</tr></thead><tbody>' +
@@ -536,7 +609,7 @@ async function loadEntityTable() {
   var res = await api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'list_entities', limit: 200 }) });
   var items = res.entities || [];
   var container = document.getElementById('entity-table-container');
-  if (items.length === 0) { container.innerHTML = '<div class="empty-table">No entities stored yet.</div>'; return; }
+  if (items.length === 0) { container.innerHTML = emptyTableHtml('No entities stored yet.', 'Entities are knowledge-graph nodes — people, projects, tools, or concepts.', 'showAddEntityModal()', 'Add your first entity'); return; }
   container.innerHTML = '<table class="data-table"><thead><tr>' +
     '<th>Type</th><th>Name</th><th>Description</th><th>Confidence</th><th>ID</th>' +
     '</tr></thead><tbody>' +
@@ -557,7 +630,7 @@ async function loadRelationshipTable() {
   var res = await api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'list_relationships', limit: 200 }) });
   var items = res.relationships || [];
   var container = document.getElementById('relationship-table-container');
-  if (items.length === 0) { container.innerHTML = '<div class="empty-table">No relationships stored yet.</div>'; return; }
+  if (items.length === 0) { container.innerHTML = emptyTableHtml('No relationships stored yet.', 'Relationships are weighted edges connecting two entities, e.g. "Alice" —WORKS_ON→ "CloudQueryX".', 'showAddRelationshipModal()', 'Add your first relationship'); return; }
   container.innerHTML = '<table class="data-table"><thead><tr>' +
     '<th>Type</th><th>Source Entity</th><th>Target Entity</th><th>Weight</th><th>ID</th>' +
     '</tr></thead><tbody>' +
@@ -577,7 +650,7 @@ async function loadEventTable() {
   var res = await api('/api/events?limit=100');
   var items = res.events || [];
   var container = document.getElementById('event-table-container');
-  if (items.length === 0) { container.innerHTML = '<div class="empty-table">No events logged yet.</div>'; return; }
+  if (items.length === 0) { container.innerHTML = emptyTableHtml('No events logged yet.', 'Events are timeline entries for things that happened — deployments, incidents, user actions.', 'showAddEventModal()', 'Log your first event'); return; }
   container.innerHTML = '<table class="data-table"><thead><tr>' +
     '<th>Event Type</th><th>Action</th><th>Time</th><th>ID</th>' +
     '</tr></thead><tbody>' +

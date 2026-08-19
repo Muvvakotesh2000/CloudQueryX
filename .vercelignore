@@ -1,0 +1,13 @@
+.env
+.env.local
+.env.production
+.git
+.gradle
+build
+logs
+models
+data
+tmp
+*.log
+server-*.log
+test-data.json

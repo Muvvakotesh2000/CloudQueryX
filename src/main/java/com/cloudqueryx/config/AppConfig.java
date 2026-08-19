@@ -97,7 +97,13 @@ public final class AppConfig {
     public String dbPassword() { return get("CLOUDQUERYX_DB_PASSWORD", "postgres"); }
     public int dbPoolSize() { return getInt("CLOUDQUERYX_DB_POOL_SIZE", 10); }
     public long dbPoolTimeout() { return getLong("CLOUDQUERYX_DB_POOL_TIMEOUT", 30000); }
-    public int serverPort() { return getInt("CLOUDQUERYX_PORT", 8080); }
+    public int serverPort() {
+        String cloudQueryXPort = get("CLOUDQUERYX_PORT");
+        if (cloudQueryXPort != null && !cloudQueryXPort.isBlank()) {
+            return getInt("CLOUDQUERYX_PORT", 8080);
+        }
+        return getInt("PORT", 8080);
+    }
     public String serverHost() { return get("CLOUDQUERYX_HOST", "0.0.0.0"); }
     public int vectorDimension() { return getInt("CLOUDQUERYX_VECTOR_DIMENSION", 384); }
     public int sessionTimeoutHours() { return getInt("CLOUDQUERYX_SESSION_TIMEOUT_HOURS", 24); }

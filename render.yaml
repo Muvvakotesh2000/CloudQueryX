@@ -1,0 +1,41 @@
+services:
+  - type: web
+    runtime: docker
+    name: cloudqueryx
+    repo: https://github.com/Muvvakotesh2000/CloudQueryX
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    autoDeployTrigger: commit
+    healthCheckPath: /api/health
+    envVars:
+      - key: CLOUDQUERYX_PORT
+        value: 10000
+      - key: CLOUDQUERYX_DB_POOL_SIZE
+        value: 3
+      - key: CLOUDQUERYX_DB_POOL_TIMEOUT
+        value: 5000
+      - key: CLOUDQUERYX_VECTOR_DIMENSION
+        value: 384
+      - key: CLOUDQUERYX_EMBEDDING_PROVIDER
+        value: openai
+      - key: CLOUDQUERYX_LLM_PROVIDER
+        value: openai
+      - key: CLOUDQUERYX_LLM_MODEL
+        value: gpt-4.1-mini
+      - key: CLOUDQUERYX_CHAT_TOKEN_BUDGET
+        value: 8000
+      - key: CLOUDQUERYX_LLM_TIMEOUT_SECONDS
+        value: 45
+      - key: CLOUDQUERYX_DB_URL
+        sync: false
+      - key: CLOUDQUERYX_DB_USER
+        sync: false
+      - key: CLOUDQUERYX_DB_PASSWORD
+        sync: false
+      - key: CLOUDQUERYX_OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false

@@ -16,8 +16,19 @@ function api(path, opts) {
   if (token) headers['Authorization'] = 'Bearer ' + token;
   if (currentDbId) headers['X-Database-Id'] = currentDbId;
   return fetch(API + path, Object.assign({}, opts, { headers: headers }))
-    .then(function(r) { return r.json(); })
-    .catch(function(e) { return { error: e.message }; });
+    .then(function(r) {
+      return r.text().then(function(text) {
+        var data = {};
+        if (text) {
+          try { data = JSON.parse(text); }
+          catch (e) { data = { error: text }; }
+        }
+        if (!r.ok && !data.error) data.error = 'Request failed with status ' + r.status;
+        data.statusCode = r.status;
+        return data;
+      });
+    })
+    .catch(function(e) { return { error: 'Network error: ' + e.message }; });
 }
 
 function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
@@ -68,17 +79,47 @@ function switchAuthTab(tab) {
   document.getElementById('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
   document.getElementById('auth-title').textContent = tab === 'login' ? 'Log in to CloudQueryX' : 'Create your account';
   document.getElementById('auth-subtitle').textContent = tab === 'login' ? 'Access your context databases' : 'Get started with CloudQueryX';
+  setAuthMessage('login', '');
+  setAuthMessage('signup', '');
+  setAuthBusy('login', false);
+  setAuthBusy('signup', false);
+}
+
+function setAuthMessage(mode, message, type) {
+  var el = document.getElementById(mode + '-error');
+  if (!el) return;
+  el.textContent = message || '';
+  el.className = 'form-error ' + (type || '');
+}
+
+function setAuthBusy(mode, busy) {
+  var form = document.getElementById(mode + '-form');
+  if (!form) return;
+  var button = form.querySelector('button[type="submit"]');
+  if (!button) return;
+  if (!button.dataset.label) button.dataset.label = button.textContent;
+  button.disabled = busy;
+  button.textContent = busy ? (mode === 'login' ? 'Logging in...' : 'Creating account...') : button.dataset.label;
 }
 
 function handleSignup(e) {
   e.preventDefault();
   var email = document.getElementById('signup-email').value;
   var password = document.getElementById('signup-password').value;
+  setAuthMessage('signup', 'Creating your account...', 'info');
+  setAuthBusy('signup', true);
   api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ email: email, password: password }) })
     .then(function(res) {
-      if (res.error) { document.getElementById('signup-error').textContent = res.error; return; }
+      setAuthBusy('signup', false);
+      if (res.error) {
+        setAuthMessage('signup', res.error, 'error');
+        showToast(res.error, 'error');
+        return;
+      }
       token = res.token; localStorage.setItem('cqx_token', token);
-      closeAuth(); showApp(res.user, res.defaultDatabase);
+      setAuthMessage('signup', 'Account created. Opening your chat demo...', 'success');
+      showToast('Account created. Opening chat demo.');
+      setTimeout(function() { closeAuth(); showApp(res.user, res.defaultDatabase); }, 300);
     });
   return false;
 }
@@ -87,11 +128,20 @@ function handleLogin(e) {
   e.preventDefault();
   var email = document.getElementById('login-email').value;
   var password = document.getElementById('login-password').value;
+  setAuthMessage('login', 'Checking your account...', 'info');
+  setAuthBusy('login', true);
   api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: email, password: password }) })
     .then(function(res) {
-      if (res.error) { document.getElementById('login-error').textContent = res.error; return; }
+      setAuthBusy('login', false);
+      if (res.error) {
+        setAuthMessage('login', res.error, 'error');
+        showToast(res.error, 'error');
+        return;
+      }
       token = res.token; localStorage.setItem('cqx_token', token);
-      closeAuth(); showApp(res.user, res.defaultDatabase);
+      setAuthMessage('login', 'Logged in. Opening your chat demo...', 'success');
+      showToast('Logged in. Opening chat demo.');
+      setTimeout(function() { closeAuth(); showApp(res.user, res.defaultDatabase); }, 300);
     });
   return false;
 }
@@ -132,7 +182,7 @@ function openDatabase(db) {
   document.getElementById('sidebar-db-name').textContent = db.name || 'Context Database';
   document.getElementById('no-db-view').style.display = 'none';
   document.getElementById('db-view').style.display = 'block';
-  showSection('overview');
+  showSection('playground');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1318,8 +1368,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (token) {
     api('/api/auth/me').then(function(res) {
-      if (res.error || !res.user) { logout(); return; }
-      showApp(res.user, res.defaultDatabase);
+      if (res.error || !res.email) {
+        showToast(res.error || 'Session expired. Please log in again.', 'error');
+        logout();
+        return;
+      }
+      showApp(res, res.defaultDatabase);
     });
   }
 });

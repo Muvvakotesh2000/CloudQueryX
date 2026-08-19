@@ -126,11 +126,15 @@ input:focus, textarea:focus, select:focus {
 }
 textarea { resize: vertical; min-height: 60px; }
 .form-error { color: var(--danger); font-size: 12px; margin-top: 6px; }
+.form-error.info { color: var(--muted); }
+.form-error.success { color: var(--success); }
+.form-error.error { color: var(--danger); }
 .form-result { font-size: 12px; margin-top: 6px; }
 .form-row { display: flex; gap: 12px; }
 .form-row > * { flex: 1; }
 .check-row { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
 .check-row input[type="checkbox"] { width: auto; margin-bottom: 0; }
+button:disabled { opacity: 0.65; cursor: wait; }
 
 /* ─── Cards ─────────────────────────────────────────────────── */
 .card {

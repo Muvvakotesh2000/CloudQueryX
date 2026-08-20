@@ -1575,6 +1575,7 @@ public class ApiServer {
         map.put("sourceId", file.sourceId());
         map.put("path", file.path());
         map.put("language", file.language());
+        map.put("s3Key", file.s3Key());
         map.put("contentHash", file.contentHash());
         map.put("sizeBytes", file.sizeBytes());
         map.put("version", file.version());

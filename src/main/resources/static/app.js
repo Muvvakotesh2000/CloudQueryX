@@ -763,8 +763,16 @@ function renderCodeProjects(projects) {
 
 function selectCodeProject(projectId) {
   currentCodeProjectId = projectId;
+  setCodeUploadStatus('Opening project and loading indexed files...', 'info');
   loadCodeProjects();
   loadCodeFiles();
+}
+
+function setCodeUploadStatus(message, type) {
+  var el = document.getElementById('code-upload-status');
+  if (!el) return;
+  el.textContent = message || '';
+  el.className = 'ide-upload-status ' + (type || '');
 }
 
 async function createCodeProject(nameOverride, descOverride, sourceTypeOverride, githubRepoUrl) {
@@ -853,9 +861,12 @@ async function loadCodeFiles() {
   currentCodeFiles = files;
   if (files.length === 0) {
     box.innerHTML = '<p class="muted">No files indexed yet.</p>';
+    setCodeUploadStatus('Project opened. No indexed files yet.', 'info');
     return;
   }
   box.innerHTML = renderCodeFileTree(files);
+  var firstKey = files[0] && files[0].s3Key ? files[0].s3Key : '';
+  setCodeUploadStatus('Project opened with ' + files.length + ' indexed files.' + (firstKey ? ' S3 prefix: ' + firstKey.split('/files/')[0] + '/files/' : ''), 'success');
 }
 
 function focusCodeFilePath(path) {
@@ -925,29 +936,47 @@ async function uploadLocalProjectFiles(fileList) {
   var files = Array.prototype.slice.call(fileList || []).filter(function(file) { return !isSkippableUpload(file); });
   if (!files.length) {
     showToast('No supported text files found in that upload', 'error');
+    setCodeUploadStatus('No supported text files found. Binary files and large dependency folders are skipped.', 'error');
     return;
   }
   var folderName = folderNameFromUpload(files) || 'Uploaded Project';
+  setCodeUploadStatus('Creating project from folder "' + folderName + '"...', 'info');
   var project = await createCodeProject(folderName, 'Uploaded local folder: ' + folderName, 'folder', null);
   if (!project) return;
   var maxFiles = Math.min(files.length, 80);
   showToast('Created "' + folderName + '". Uploading ' + maxFiles + ' files.', 'info');
   var saved = 0;
+  var failed = 0;
+  var firstError = '';
   for (var i = 0; i < maxFiles; i++) {
     var file = files[i];
     var path = file.webkitRelativePath || file.name;
+    setCodeUploadStatus('Uploading ' + (i + 1) + ' / ' + maxFiles + ': ' + path, 'info');
     try {
       var content = await file.text();
       var res = await api('/api/code/projects/' + currentCodeProjectId + '/files', {
         method: 'POST',
         body: JSON.stringify({ path: path, content: content, language: inferCodeLanguage(path) })
       });
-      if (!res.error) saved++;
+      if (!res.error) {
+        saved++;
+      } else {
+        failed++;
+        if (!firstError) firstError = res.error;
+      }
     } catch (e) {
+      failed++;
+      if (!firstError) firstError = e.message || String(e);
       console.warn('Skipped upload', path, e);
     }
   }
-  showToast('Uploaded and indexed ' + saved + ' files');
+  if (saved > 0) {
+    setCodeUploadStatus('Uploaded ' + saved + ' files' + (failed ? '; ' + failed + ' failed. First error: ' + firstError : '') + '.', failed ? 'warn' : 'success');
+    showToast('Uploaded and indexed ' + saved + ' files');
+  } else {
+    setCodeUploadStatus('Upload failed. First error: ' + (firstError || 'No files were saved.'), 'error');
+    showToast('Upload failed: ' + (firstError || 'No files were saved.'), 'error');
+  }
   var input = document.getElementById('code-folder-upload');
   if (input) input.value = '';
   loadCodeFiles();

@@ -1631,6 +1631,34 @@ button:disabled { opacity: 0.65; cursor: wait; }
 .ide-upload.primary {
   margin: 0 0 10px;
 }
+.ide-upload-status {
+  min-height: 34px;
+  margin-bottom: 12px;
+  padding: 8px 9px;
+  border: 1px solid #303846;
+  border-radius: 6px;
+  background: #0f141b;
+  color: #8f9aaa;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ide-upload-status.info {
+  border-color: #345447;
+  color: #a9dfc5;
+}
+.ide-upload-status.success {
+  border-color: #2f8f6b;
+  color: #9ff0ca;
+}
+.ide-upload-status.warn {
+  border-color: #8d6b22;
+  color: #f5d68a;
+}
+.ide-upload-status.error {
+  border-color: #8d3434;
+  color: #ffaaa5;
+}
 .ide-github-import,
 .ide-rename-row {
   display: grid;

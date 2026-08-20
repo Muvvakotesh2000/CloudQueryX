@@ -31,6 +31,24 @@ public class ContextBundleService {
                                    int tokenBudget, String mode, boolean includeExplanations,
                                    List<String> sourceTypes, boolean includeMemories, boolean includeSources,
                                    boolean includeGraph, boolean includeEvents) {
+        return buildInternal(null, databaseId, userId, query, targetModel, tokenBudget, mode, includeExplanations,
+                sourceTypes, includeMemories, includeSources, includeGraph, includeEvents);
+    }
+
+    public BundleBuildResult buildTraced(TraceSink trace, String databaseId, String userId, String query,
+                                         String targetModel, int tokenBudget, String mode,
+                                         boolean includeExplanations, List<String> sourceTypes,
+                                         boolean includeMemories, boolean includeSources,
+                                         boolean includeGraph, boolean includeEvents) {
+        return buildInternal(trace, databaseId, userId, query, targetModel, tokenBudget, mode, includeExplanations,
+                sourceTypes, includeMemories, includeSources, includeGraph, includeEvents);
+    }
+
+    private BundleBuildResult buildInternal(TraceSink trace, String databaseId, String userId, String query,
+                                            String targetModel, int tokenBudget, String mode,
+                                            boolean includeExplanations, List<String> sourceTypes,
+                                            boolean includeMemories, boolean includeSources,
+                                            boolean includeGraph, boolean includeEvents) {
         if (query == null || query.isBlank()) throw new IllegalArgumentException("query required");
         String bundleId = UUID.randomUUID().toString();
         ModelContextAdapter adapter = formatterService.adapter(targetModel);
@@ -39,8 +57,35 @@ public class ContextBundleService {
         List<RetrievalResult> retrieved = retrievalService.retrieve(
                 databaseId, userId, query, 30, sourceTypes, includeMemories, includeSources,
                 includeGraph, includeEvents);
+        if (trace != null) {
+            trace.emit("retrieve", Map.of(
+                    "candidateIds", retrieved.stream().map(this::candidateId).toList(),
+                    "count", retrieved.size()));
+        }
+        List<RetrievalResult> planned = applyModePlanning(retrieved, mode);
+        Set<String> survivingIds = planned.stream().map(this::candidateId).collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        List<String> droppedIds = retrieved.stream().map(this::candidateId).filter(id -> !survivingIds.contains(id)).toList();
+        if (trace != null) {
+            trace.emit("rank", Map.of(
+                    "survivingIds", new ArrayList<>(survivingIds),
+                    "droppedIds", droppedIds,
+                    "droppedReasons", droppedIds.stream().collect(java.util.stream.Collectors.toMap(id -> id, id -> "Lowered or removed by mode planning", (a, b) -> a, LinkedHashMap::new))));
+            trace.emit("conflict_check", Map.of("conflicts", detectConflicts(planned)));
+            trace.emit("policy_filter", policyFilterPayload(planned));
+        }
         List<TokenBudgetOptimizer.BundleCandidate> selected = optimizer.optimize(
-                query, applyModePlanning(retrieved, mode), effectiveBudget);
+                query, planned, effectiveBudget);
+        if (trace != null) {
+            Set<String> included = selected.stream().map(c -> candidateId(c.result())).collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+            List<String> excluded = planned.stream().map(this::candidateId).filter(id -> !included.contains(id)).toList();
+            int selectedTokens = selected.stream().mapToInt(TokenBudgetOptimizer.BundleCandidate::tokenEstimate).sum();
+            trace.emit("trim", Map.of(
+                    "includedIds", new ArrayList<>(included),
+                    "excludedIds", excluded,
+                    "tokensUsed", selectedTokens,
+                    "tokensBudget", effectiveBudget,
+                    "excludedReasons", excluded.stream().collect(java.util.stream.Collectors.toMap(id -> id, id -> "Excluded by token budget or low relevance", (a, b) -> a, LinkedHashMap::new))));
+        }
         int estimatedTokens = selected.stream().mapToInt(TokenBudgetOptimizer.BundleCandidate::tokenEstimate).sum();
         String formatted = adapter.format(query, mode, selected);
 
@@ -53,6 +98,18 @@ public class ContextBundleService {
                 .map(candidate -> toItem(databaseId, bundleId, candidate))
                 .toList();
         bundleRepo.save(bundle, items);
+        if (trace != null) {
+            trace.emit("bundle", Map.of(
+                    "bundleId", bundleId,
+                    "itemCount", items.size(),
+                    "tokensUsed", estimatedTokens,
+                    "rawPayload", formatted));
+            trace.emit("handoff", Map.of(
+                    "provider", "external-llm",
+                    "model", adapter.modelKey(),
+                    "rawPayload", formatted));
+            trace.emit("response", Map.of());
+        }
 
         return new BundleBuildResult(bundleId, query, adapter.modelKey(), effectiveBudget,
                 estimatedTokens, adapter.estimatedCostUsd(estimatedTokens), "VALID",
@@ -149,6 +206,45 @@ public class ContextBundleService {
         return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
+    private String candidateId(RetrievalResult result) {
+        String id = result.memoryId();
+        if (id == null || id.isBlank()) id = result.chunkId();
+        if (id == null || id.isBlank()) id = result.id();
+        if (id == null || id.isBlank()) id = result.sourceId();
+        String prefix = result.type() == null ? "ctx" : result.type().toLowerCase(Locale.ROOT);
+        return prefix + ":" + (id == null ? UUID.randomUUID() : id);
+    }
+
+    private List<Map<String, Object>> detectConflicts(List<RetrievalResult> results) {
+        List<Map<String, Object>> conflicts = new ArrayList<>();
+        Map<String, RetrievalResult> seen = new HashMap<>();
+        for (RetrievalResult result : results) {
+            String normalized = safeLower(result.content());
+            if (!(normalized.contains("actually") || normalized.contains("correction") || normalized.contains("conflict"))) continue;
+            String key = result.type() + ":" + Math.min(24, normalized.length());
+            RetrievalResult previous = seen.putIfAbsent(key, result);
+            if (previous != null) {
+                conflicts.add(Map.of(
+                        "a", candidateId(previous),
+                        "b", candidateId(result),
+                        "resolution", "Prefer newer or explicitly corrected context"));
+            }
+        }
+        return conflicts;
+    }
+
+    private Map<String, Object> policyFilterPayload(List<RetrievalResult> results) {
+        List<String> redacted = new ArrayList<>();
+        List<String> denied = new ArrayList<>();
+        for (RetrievalResult result : results) {
+            String content = safeLower(result.content());
+            String id = candidateId(result);
+            if (content.contains("api key") || content.contains("password") || content.contains("secret")) redacted.add(id);
+            if (content.contains("private key") || content.contains("access token")) denied.add(id);
+        }
+        return Map.of("redactedIds", redacted, "deniedIds", denied);
+    }
+
     private double clamp(double value) {
         if (Double.isNaN(value) || Double.isInfinite(value)) return 0;
         return Math.max(0, Math.min(1, value));
@@ -225,4 +321,8 @@ public class ContextBundleService {
             String formattedContext,
             List<Map<String, Object>> items
     ) {}
+
+    public interface TraceSink {
+        void emit(String stage, Map<String, Object> payload);
+    }
 }

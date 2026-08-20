@@ -399,6 +399,30 @@
                   <div id="chat-context-summary" class="side-body"><p class="muted">No context used yet.</p></div>
                 </div>
                 <div class="side-section">
+                  <h4>Cognition Trace</h4>
+                  <p class="side-hint">Live backend events from the context planner. Replay uses the same schema.</p>
+                  <div id="cognition-trace" class="side-body cognition-trace">
+                    <div class="trace-stage-row">
+                      <span data-trace-stage="query">Query</span>
+                      <span data-trace-stage="retrieve">Retrieve</span>
+                      <span data-trace-stage="rank">Rank</span>
+                      <span data-trace-stage="policy">Conflict+Policy</span>
+                      <span data-trace-stage="trim">Trim</span>
+                      <span data-trace-stage="bundle">Bundle -> LLM</span>
+                    </div>
+                    <div class="trace-live-counters">
+                      <span>Candidates <b id="trace-candidates">0</b></span>
+                      <span>Included <b id="trace-included">0</b></span>
+                      <span>Tokens <b id="trace-tokens">0 / 0</b></span>
+                    </div>
+                    <div id="trace-candidate-board" class="trace-candidate-board">
+                      <p class="muted">Submit a message to watch real backend trace events.</p>
+                    </div>
+                    <button class="btn-sm trace-raw-toggle" onclick="toggleTraceRaw()">View raw payload</button>
+                    <pre id="trace-raw-payload" class="trace-raw-payload" style="display:none"></pre>
+                  </div>
+                </div>
+                <div class="side-section">
                   <h4>Context quality</h4>
                   <p class="side-hint">A quick score for coverage, freshness, token efficiency, and noise risk.</p>
                   <div id="chat-quality-score" class="side-body"><p class="muted">Ask a question to score the context bundle.</p></div>

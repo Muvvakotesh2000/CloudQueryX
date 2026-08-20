@@ -181,3 +181,18 @@ CREATE TABLE IF NOT EXISTS context_bundle_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bundle_items_bundle ON context_bundle_items (database_id, bundle_id);
+
+CREATE TABLE IF NOT EXISTS context_trace_events (
+    id TEXT PRIMARY KEY,
+    database_id UUID REFERENCES databases(id) ON DELETE CASCADE,
+    request_id TEXT NOT NULL,
+    bundle_id TEXT,
+    stage TEXT NOT NULL,
+    payload JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_trace_events_request
+    ON context_trace_events (database_id, request_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_trace_events_bundle
+    ON context_trace_events (database_id, bundle_id, created_at);

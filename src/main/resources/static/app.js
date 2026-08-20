@@ -927,12 +927,37 @@ function fileIcon(path) {
 }
 
 function isSkippableUpload(file) {
+  return uploadSkipReason(file) !== '';
+}
+
+function uploadSkipReason(file) {
   var path = String(file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
   var wrapped = '/' + path.toLowerCase();
-  if (!path || wrapped.includes('/.git/') || wrapped.includes('/node_modules/') || wrapped.includes('/build/') || wrapped.includes('/dist/') || wrapped.includes('/target/') || wrapped.includes('/__pycache__/') || wrapped.includes('/.pytest_cache/') || wrapped.includes('/.next/') || wrapped.includes('/.gradle/')) return true;
-  if (file.size > 1024 * 1024) return true;
+  if (!path) return 'empty path';
+  if (wrapped.includes('/.git/')) return '.git metadata';
+  if (wrapped.includes('/node_modules/')) return 'node_modules dependency folder';
+  if (wrapped.includes('/build/') || wrapped.includes('/dist/') || wrapped.includes('/target/')) return 'build output folder';
+  if (wrapped.includes('/__pycache__/') || wrapped.includes('/.pytest_cache/')) return 'Python cache folder';
+  if (wrapped.includes('/.next/') || wrapped.includes('/.gradle/')) return 'tool cache folder';
+  if (file.size > 1024 * 1024) return 'file over 1 MB';
   var lower = path.toLowerCase();
-  return /\.(png|jpg|jpeg|gif|webp|ico|pdf|zip|jar|class|pyc|pyo|exe|dll|so|dylib|mp4|mov|mp3|wav|woff|woff2|ttf)$/i.test(lower);
+  if (/\.(png|jpg|jpeg|gif|webp|ico|pdf|zip|jar|class|pyc|pyo|exe|dll|so|dylib|mp4|mov|mp3|wav|woff|woff2|ttf)$/i.test(lower)) return 'binary/cache file';
+  return '';
+}
+
+function uploadSkipSummary(fileList) {
+  var all = Array.prototype.slice.call(fileList || []);
+  var counts = {};
+  all.forEach(function(file) {
+    var reason = uploadSkipReason(file);
+    if (reason) counts[reason] = (counts[reason] || 0) + 1;
+  });
+  var reasons = Object.keys(counts).map(function(reason) { return counts[reason] + ' ' + reason; }).join(', ');
+  return {
+    total: all.length,
+    skipped: all.filter(function(file) { return !!uploadSkipReason(file); }).length,
+    reasons: reasons || 'no readable project source files'
+  };
 }
 
 async function uploadLocalProjectFiles(fileList) {
@@ -940,8 +965,9 @@ async function uploadLocalProjectFiles(fileList) {
   if (!ready) return;
   var files = Array.prototype.slice.call(fileList || []).filter(function(file) { return !isSkippableUpload(file); });
   if (!files.length) {
+    var summary = uploadSkipSummary(fileList);
     showToast('No supported text files found in that upload', 'error');
-    setCodeUploadStatus('No supported text files found. Binary files and large dependency folders are skipped.', 'error');
+    setCodeUploadStatus('No source files uploaded. Checked ' + summary.total + ' files; skipped ' + summary.skipped + ' because of ' + summary.reasons + '. Upload the parent project folder that contains .py, .java, .js, .ts, .html, .css, .json, .md, or config files.', 'error');
     return;
   }
   var folderName = folderNameFromUpload(files) || 'Uploaded Project';

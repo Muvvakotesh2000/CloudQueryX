@@ -336,8 +336,17 @@ public class ApiServer {
         Optional<SessionRepository.SessionRow> session = sessionRepo.validate(token);
         if (session.isPresent() && session.get().email().startsWith("demo-")
                 && session.get().email().endsWith("@cloudqueryx.local")) {
+            int s3Deleted = 0;
+            try {
+                s3Deleted = projectFileStorage.deleteUserPrefix(session.get().userId());
+            } catch (Exception e) {
+                log.warn("Failed to delete demo S3 objects for user {}", session.get().userId(), e);
+            }
             databaseRepo.listForUser(session.get().userId()).forEach(db ->
                     databaseRepo.delete(db.id(), session.get().userId()));
+            sessionRepo.invalidate(token);
+            sendJson(ex, 200, Map.of("message", "Demo data deleted", "s3ObjectsDeleted", s3Deleted));
+            return;
         }
         sessionRepo.invalidate(token);
         sendJson(ex, 200, Map.of("message", "Demo data deleted"));

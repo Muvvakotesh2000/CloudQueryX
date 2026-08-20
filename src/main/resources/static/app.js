@@ -6,6 +6,7 @@ var currentDbId = null;
 var currentSection = 'code';
 var currentExplorerTab = 'memories';
 var currentCodeProjectId = null;
+var currentCodeFiles = [];
 var chatMemorySuggestions = [];
 var lastAutoSavedContext = [];
 var forceGraph = null;
@@ -193,6 +194,12 @@ function handleSignup(e) {
   authRequest('signup', email, password)
     .then(function(res) {
       setAuthBusy('signup', false);
+      if (res.pendingVerification) {
+        setAuthMessage('signup', 'Verification email sent. Confirm your email, then log in.', 'success');
+        showToast('Check your email to verify your account.');
+        setTimeout(function() { switchAuthTab('login'); }, 900);
+        return;
+      }
       if (res.error) {
         setAuthMessage('signup', res.error, 'error');
         showToast(res.error, 'error');
@@ -255,6 +262,9 @@ async function authRequest(mode, email, password) {
       });
     }).catch(function(e) { return { error: e.message }; });
     if (supabaseRes.error) return { error: supabaseRes.error_description || supabaseRes.error };
+    if (mode === 'signup') {
+      return { pendingVerification: true, email: email };
+    }
     if (!supabaseRes.access_token) {
       return { error: 'Check your email to confirm your account, then log in.' };
     }
@@ -787,22 +797,109 @@ async function loadCodeFiles() {
     return;
   }
   var files = res.files || [];
+  currentCodeFiles = files;
   if (files.length === 0) {
     box.innerHTML = '<p class="muted">No files indexed yet.</p>';
     return;
   }
-  box.innerHTML = files.map(function(file) {
-    return '<div class="code-file-row" onclick="focusCodeFilePath(\'' + esc(file.path) + '\')">' +
-      '<strong>' + esc(file.path) + '</strong>' +
-      '<span>' + esc(file.language || 'text') + ' · v' + esc(String(file.version || 1)) + ' · ' + esc(formatBytes(file.sizeBytes || 0)) + '</span>' +
-      '</div>';
-  }).join('');
+  box.innerHTML = renderCodeFileTree(files);
 }
 
 function focusCodeFilePath(path) {
   var input = document.getElementById('code-file-path');
   if (input) input.value = path || '';
   showToast('File path focused. Stored content is already indexed as context.', 'info');
+}
+
+function renderCodeFileTree(files) {
+  var root = {};
+  files.forEach(function(file) {
+    var parts = String(file.path || 'untitled.txt').split('/').filter(Boolean);
+    var node = root;
+    parts.forEach(function(part, idx) {
+      node.children = node.children || {};
+      node.children[part] = node.children[part] || { name: part, children: {}, file: null };
+      node = node.children[part];
+      if (idx === parts.length - 1) node.file = file;
+    });
+  });
+  return renderTreeNodes(root.children || {}, 0);
+}
+
+function renderTreeNodes(children, depth) {
+  return Object.keys(children).sort(function(a, b) {
+    var na = children[a], nb = children[b];
+    if (!!na.file !== !!nb.file) return na.file ? 1 : -1;
+    return a.localeCompare(b);
+  }).map(function(name) {
+    var node = children[name];
+    if (node.file) {
+      var file = node.file;
+      return '<div class="ide-file-node" style="padding-left:' + (depth * 14 + 8) + 'px" onclick="focusCodeFilePath(\'' + esc(file.path) + '\')">' +
+        '<span class="file-icon">' + esc(fileIcon(file.path)) + '</span>' +
+        '<strong>' + esc(name) + '</strong>' +
+        '<small>' + esc(file.language || 'text') + ' · v' + esc(String(file.version || 1)) + ' · ' + esc(formatBytes(file.sizeBytes || 0)) + '</small>' +
+      '</div>';
+    }
+    return '<div class="ide-folder-node" style="padding-left:' + (depth * 14 + 8) + 'px"><span class="file-icon">▾</span><strong>' + esc(name) + '</strong></div>' +
+      renderTreeNodes(node.children || {}, depth + 1);
+  }).join('');
+}
+
+function fileIcon(path) {
+  var lang = inferCodeLanguage(path);
+  if (lang === 'java') return 'J';
+  if (lang === 'javascript' || lang === 'typescript') return 'JS';
+  if (lang === 'html') return '<>';
+  if (lang === 'css') return '#';
+  if (lang === 'json') return '{}';
+  if (lang === 'markdown') return 'MD';
+  if (lang === 'sql') return 'DB';
+  return '•';
+}
+
+function isSkippableUpload(file) {
+  var path = String(file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
+  if (!path || path.includes('/.git/') || path.includes('/node_modules/') || path.includes('/build/') || path.includes('/dist/') || path.includes('/target/')) return true;
+  if (file.size > 1024 * 1024) return true;
+  var lower = path.toLowerCase();
+  return /\.(png|jpg|jpeg|gif|webp|ico|pdf|zip|jar|class|exe|dll|so|dylib|mp4|mov|mp3|wav|woff|woff2|ttf)$/i.test(lower);
+}
+
+async function uploadLocalProjectFiles(fileList) {
+  var ready = await ensureDemoSession();
+  if (!ready) return;
+  if (!currentCodeProjectId) {
+    showToast('Create a cloud project before uploading a folder', 'error');
+    return;
+  }
+  var files = Array.prototype.slice.call(fileList || []).filter(function(file) { return !isSkippableUpload(file); });
+  if (!files.length) {
+    showToast('No supported text files found in that upload', 'error');
+    return;
+  }
+  var maxFiles = Math.min(files.length, 80);
+  showToast('Uploading ' + maxFiles + ' project files. Large/binary folders are skipped.', 'info');
+  var saved = 0;
+  for (var i = 0; i < maxFiles; i++) {
+    var file = files[i];
+    var path = file.webkitRelativePath || file.name;
+    try {
+      var content = await file.text();
+      var res = await api('/api/code/projects/' + currentCodeProjectId + '/files', {
+        method: 'POST',
+        body: JSON.stringify({ path: path, content: content, language: inferCodeLanguage(path) })
+      });
+      if (!res.error) saved++;
+    } catch (e) {
+      console.warn('Skipped upload', path, e);
+    }
+  }
+  showToast('Uploaded and indexed ' + saved + ' files');
+  var input = document.getElementById('code-folder-upload');
+  if (input) input.value = '';
+  loadCodeFiles();
+  if (currentExplorerTab === 'sources') loadSourceTable();
 }
 
 async function saveCodeFile() {

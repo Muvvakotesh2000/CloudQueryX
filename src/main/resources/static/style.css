@@ -1612,6 +1612,62 @@ button:disabled { opacity: 0.65; cursor: wait; }
   padding: 0 8px 10px;
   color: #8f9aaa;
 }
+.ide-upload {
+  display: block;
+  margin: 0 12px 10px;
+  padding: 9px 10px;
+  border: 1px dashed #345447;
+  border-radius: 6px;
+  background: #111c1a;
+  color: #9ff0ca;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  cursor: pointer;
+}
+.ide-upload input {
+  display: none;
+}
+.ide-file-node,
+.ide-folder-node {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  border-radius: 5px;
+  color: #d7dde7;
+  cursor: pointer;
+}
+.ide-folder-node {
+  color: #f4f7fb;
+  font-weight: 800;
+  cursor: default;
+}
+.ide-file-node:hover {
+  background: #1d2a28;
+}
+.ide-file-node strong,
+.ide-folder-node strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.ide-file-node small {
+  grid-column: 2;
+  overflow: hidden;
+  color: #7f8a99;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-icon {
+  color: #35d99a;
+  font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 900;
+}
 .ide-tree .code-list-item,
 .ide-tree .code-file-row {
   margin-bottom: 4px;

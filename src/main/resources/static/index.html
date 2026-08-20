@@ -472,6 +472,10 @@
                 <div class="ide-tree-title">Projects</div>
                 <div id="code-project-list" class="ide-tree muted">No project loaded yet.</div>
                 <div class="ide-tree-title">Files</div>
+                <label class="ide-upload">
+                  Upload local folder
+                  <input type="file" id="code-folder-upload" multiple webkitdirectory directory onchange="uploadLocalProjectFiles(this.files)">
+                </label>
                 <div id="code-file-list" class="ide-tree muted">No files indexed yet.</div>
               </aside>
 

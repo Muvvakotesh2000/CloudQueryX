@@ -4,7 +4,9 @@ import com.cloudqueryx.config.AppConfig;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.nio.charset.StandardCharsets;
@@ -49,6 +51,29 @@ public class S3ProjectFileStorage {
         String normalized = path == null ? "untitled.txt" : path.replace('\\', '/');
         while (normalized.startsWith("/")) normalized = normalized.substring(1);
         return "users/%s/projects/%s/files/v%s/%s".formatted(userId, projectId, version, normalized);
+    }
+
+    public int deleteUserPrefix(String userId) {
+        if (!enabled()) return 0;
+        String prefix = "users/%s/".formatted(userId);
+        int deleted = 0;
+        String continuationToken = null;
+        do {
+            ListObjectsV2Request.Builder request = ListObjectsV2Request.builder()
+                    .bucket(config.s3Bucket())
+                    .prefix(prefix);
+            if (continuationToken != null) request.continuationToken(continuationToken);
+            var response = s3.listObjectsV2(request.build());
+            for (var object : response.contents()) {
+                s3.deleteObject(DeleteObjectRequest.builder()
+                        .bucket(config.s3Bucket())
+                        .key(object.key())
+                        .build());
+                deleted++;
+            }
+            continuationToken = response.nextContinuationToken();
+        } while (continuationToken != null && !continuationToken.isBlank());
+        return deleted;
     }
 
     private void ensureEnabled() {

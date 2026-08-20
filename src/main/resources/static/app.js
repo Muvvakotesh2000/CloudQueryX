@@ -957,11 +957,7 @@ async function uploadLocalProjectFiles(fileList) {
     var path = file.webkitRelativePath || file.name;
     setCodeUploadStatus('Uploading ' + (i + 1) + ' / ' + maxFiles + ': ' + path, 'info');
     try {
-      var content = await file.text();
-      var res = await api('/api/code/projects/' + currentCodeProjectId + '/files', {
-        method: 'POST',
-        body: JSON.stringify({ path: path, content: content, language: inferCodeLanguage(path) })
-      });
+      var res = await uploadProjectFileWithPresignedUrl(path, file, inferCodeLanguage(path));
       if (!res.error) {
         saved++;
       } else {
@@ -989,6 +985,43 @@ async function uploadLocalProjectFiles(fileList) {
   if (currentExplorerTab === 'sources') loadSourceTable();
 }
 
+async function uploadProjectFileWithPresignedUrl(path, fileOrBlob, language) {
+  var contentType = contentTypeForUpload(language);
+  var presign = await api('/api/code/projects/' + currentCodeProjectId + '/files/presign', {
+    method: 'POST',
+    body: JSON.stringify({ path: path, language: language, contentType: contentType, sizeBytes: fileOrBlob.size || 0 })
+  });
+  if (presign.error) return presign;
+
+  var putRes;
+  try {
+    putRes = await fetch(presign.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': presign.contentType || contentType },
+      body: fileOrBlob
+    });
+  } catch (e) {
+    return { error: 'Browser could not upload directly to S3. Check bucket CORS for PUT from this domain. ' + (e.message || '') };
+  }
+  if (!putRes.ok) {
+    return { error: 'S3 direct upload failed with status ' + putRes.status + '. Check bucket CORS and IAM s3:PutObject permission.' };
+  }
+
+  return api('/api/code/projects/' + currentCodeProjectId + '/files/complete', {
+    method: 'POST',
+    body: JSON.stringify({ path: path, language: language, s3Key: presign.s3Key, sizeBytes: fileOrBlob.size || 0 })
+  });
+}
+
+function contentTypeForUpload(language) {
+  if (language === 'json') return 'application/json; charset=utf-8';
+  if (language === 'html') return 'text/html; charset=utf-8';
+  if (language === 'css') return 'text/css; charset=utf-8';
+  if (language === 'javascript') return 'text/javascript; charset=utf-8';
+  if (language === 'markdown') return 'text/markdown; charset=utf-8';
+  return 'text/plain; charset=utf-8';
+}
+
 function folderNameFromUpload(files) {
   for (var i = 0; i < files.length; i++) {
     var path = files[i].webkitRelativePath || files[i].name || '';
@@ -1012,10 +1045,8 @@ async function saveCodeFile() {
     return;
   }
   showToast('Saving file to cloud storage and indexing source...', 'info');
-  var res = await api('/api/code/projects/' + currentCodeProjectId + '/files', {
-    method: 'POST',
-    body: JSON.stringify({ path: path, content: content, language: inferCodeLanguage(path) })
-  });
+  var language = inferCodeLanguage(path);
+  var res = await uploadProjectFileWithPresignedUrl(path, new Blob([content], { type: contentTypeForUpload(language) }), language);
   if (res.error) {
     showToast(res.error, 'error');
     return;

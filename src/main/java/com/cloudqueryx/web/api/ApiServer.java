@@ -549,6 +549,16 @@ public class ApiServer {
                 return;
             }
 
+            if ("files".equals(parts[1]) && parts.length >= 3 && "presign".equals(parts[2]) && "POST".equals(method)) {
+                handleProjectFilePresign(ex, session, dbId, project.get());
+                return;
+            }
+
+            if ("files".equals(parts[1]) && parts.length >= 3 && "complete".equals(parts[2]) && "POST".equals(method)) {
+                handleProjectFileComplete(ex, session, dbId, project.get());
+                return;
+            }
+
             if ("files".equals(parts[1])) {
                 handleProjectFiles(ex, session, dbId, project.get());
                 return;
@@ -629,6 +639,84 @@ public class ApiServer {
                     contentHash, content.getBytes(StandardCharsets.UTF_8).length);
         } catch (RuntimeException e) {
             log.warn("Project file indexing failed for project {} path {}", project.id(), filePath, e);
+            sendError(ex, 500, "File uploaded to S3 but indexing failed. Check project_files, sources, and context chunk tables.");
+            return;
+        }
+
+        sendJson(ex, 201, Map.of("file", projectFileToMap(file), "source", sourceToMap(source, false)));
+    }
+
+    private void handleProjectFilePresign(HttpExchange ex, SessionRepository.SessionRow session, String dbId,
+                                          CodingProjectRepository.ProjectRow project) throws IOException {
+        Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
+        String filePath = CodingProjectRepository.normalizePath(requiredBodyString(body, "path"));
+        String language = Objects.requireNonNullElse(JsonUtil.getString(body, "language"), inferLanguage(filePath));
+        int nextVersion = codingProjectRepo.listFiles(project.id(), dbId, session.userId()).stream()
+                .filter(f -> f.path().equals(filePath))
+                .mapToInt(CodingProjectRepository.FileRow::version)
+                .max()
+                .orElse(0) + 1;
+        String s3Key = projectFileStorage.keyFor(session.userId(), project.id(), nextVersion, filePath);
+        try {
+            S3ProjectFileStorage.PresignedUpload upload =
+                    projectFileStorage.presignPut(s3Key, contentTypeFor(language), Duration.ofMinutes(10));
+            sendJson(ex, 200, Map.of(
+                    "method", "PUT",
+                    "uploadUrl", upload.uploadUrl(),
+                    "s3Key", upload.s3Key(),
+                    "contentType", upload.contentType(),
+                    "expiresAt", upload.expiresAt()));
+        } catch (IllegalStateException e) {
+            sendError(ex, 503, e.getMessage());
+        } catch (SdkException e) {
+            log.warn("S3 presign failed for project {} path {}", project.id(), filePath, e);
+            sendError(ex, 503, "S3 presign failed. Check AWS credentials, bucket name, region, and S3 permissions.");
+        }
+    }
+
+    private void handleProjectFileComplete(HttpExchange ex, SessionRepository.SessionRow session, String dbId,
+                                           CodingProjectRepository.ProjectRow project) throws IOException {
+        Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
+        String filePath = CodingProjectRepository.normalizePath(requiredBodyString(body, "path"));
+        String s3Key = requiredBodyString(body, "s3Key");
+        String language = Objects.requireNonNullElse(JsonUtil.getString(body, "language"), inferLanguage(filePath));
+        String allowedPrefix = "users/%s/projects/%s/files/".formatted(session.userId(), project.id());
+        if (!s3Key.startsWith(allowedPrefix)) {
+            sendError(ex, 403, "S3 key does not belong to this project");
+            return;
+        }
+
+        String content;
+        try {
+            content = projectFileStorage.getText(s3Key);
+        } catch (SdkException e) {
+            log.warn("S3 read failed after upload for project {} path {}", project.id(), filePath, e);
+            sendError(ex, 503, "S3 upload completed but backend could not read it. Check s3:GetObject permission and bucket CORS.");
+            return;
+        }
+
+        String contentHash = sha256(content);
+        SourceRepository.SourceRow source;
+        CodingProjectRepository.FileRow file;
+        try {
+            source = sourceService.create(
+                    dbId,
+                    session.userId(),
+                    sourceTypeForLanguage(language),
+                    filePath,
+                    content,
+                    Map.of(
+                            "origin", "coding-assistant-presigned",
+                            "projectId", project.id(),
+                            "path", filePath,
+                            "language", language,
+                            "s3Key", s3Key));
+
+            file = codingProjectRepo.upsertFile(
+                    project.id(), dbId, session.userId(), source.id(), filePath, language, s3Key,
+                    contentHash, content.getBytes(StandardCharsets.UTF_8).length);
+        } catch (RuntimeException e) {
+            log.warn("Presigned project file indexing failed for project {} path {}", project.id(), filePath, e);
             sendError(ex, 500, "File uploaded to S3 but indexing failed. Check project_files, sources, and context chunk tables.");
             return;
         }

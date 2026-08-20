@@ -8,17 +8,24 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 public class S3ProjectFileStorage {
 
     private final AppConfig config;
     private final S3Client s3;
+    private final S3Presigner presigner;
 
     public S3ProjectFileStorage(AppConfig config) {
         this.config = config;
         this.s3 = S3Client.builder()
+                .region(Region.of(config.awsRegion()))
+                .build();
+        this.presigner = S3Presigner.builder()
                 .region(Region.of(config.awsRegion()))
                 .build();
     }
@@ -45,6 +52,22 @@ public class S3ProjectFileStorage {
                 .key(key)
                 .build();
         return s3.getObjectAsBytes(request).asUtf8String();
+    }
+
+    public PresignedUpload presignPut(String key, String contentType, Duration ttl) {
+        ensureEnabled();
+        PutObjectRequest objectRequest = PutObjectRequest.builder()
+                .bucket(config.s3Bucket())
+                .key(key)
+                .contentType(contentType != null ? contentType : "text/plain; charset=utf-8")
+                .build();
+        PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
+                .signatureDuration(ttl != null ? ttl : Duration.ofMinutes(10))
+                .putObjectRequest(objectRequest)
+                .build();
+        var presigned = presigner.presignPutObject(presignRequest);
+        return new PresignedUpload(presigned.url().toString(), key, objectRequest.contentType(),
+                presigned.expiration().toString());
     }
 
     public String keyFor(String userId, String projectId, int version, String path) {
@@ -81,4 +104,6 @@ public class S3ProjectFileStorage {
             throw new IllegalStateException("AWS_S3_BUCKET is required for cloud project file storage");
         }
     }
+
+    public record PresignedUpload(String uploadUrl, String s3Key, String contentType, String expiresAt) {}
 }

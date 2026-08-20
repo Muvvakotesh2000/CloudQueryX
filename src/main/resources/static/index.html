@@ -17,49 +17,49 @@
       <a href="/" class="logo-mark">CloudQueryX</a>
       <div class="nav-actions">
         <button class="btn-text" onclick="showAuth('login')">Sign in</button>
-        <button class="btn-primary-sm" onclick="startDemo()">Start free playground</button>
+        <button class="btn-primary-sm" onclick="startDemo()">Open coding workspace</button>
       </div>
     </div>
   </nav>
 
   <section class="playground-hero" id="playground-preview">
     <div class="playground-copy">
-      <p class="hero-tag">Public context playground</p>
-      <h1>Talk to the demo. Watch the memory engine work.</h1>
-      <p class="hero-desc">CloudQueryX is a context runtime for LLM apps. The assistant is only the demo surface: behind every reply, CloudQueryX stores useful context, retrieves memories, ranks evidence, and builds a token-budgeted bundle.</p>
+      <p class="hero-tag">Cloud AI coding workspace</p>
+      <h1>Code with AI, but keep control of what it sees and changes.</h1>
+      <p class="hero-desc">CloudQueryX is a browser-based coding assistant with a transparent context engine. Upload project files, ask for help, inspect the selected code context, review the plan, and keep project memory in the cloud.</p>
       <div class="hero-actions">
-        <button class="btn-primary" onclick="startDemo()">Open playground</button>
-        <a class="btn-outline" href="#data-preview">See stored data</a>
+        <button class="btn-primary" onclick="startDemo()">Open coding workspace</button>
+        <a class="btn-outline" href="#data-preview">See context layer</a>
       </div>
-      <p class="hero-note">Free demo limit: 20 messages. Temporary data is deleted when the demo ends or the tab closes.</p>
+      <p class="hero-note">Free demo limit: 20 assistant turns. Temporary projects and context are deleted when the demo ends or the tab closes.</p>
     </div>
 
     <div class="playground-shell" aria-label="CloudQueryX playground preview">
       <div class="playground-window">
         <div class="window-top">
           <span></span><span></span><span></span>
-          <strong>CloudQueryX Playground</strong>
+          <strong>CloudQueryX Coding Workspace</strong>
         </div>
         <div class="preview-chat">
-          <div class="preview-message user">Remember that I am building CloudQueryX as a provider-neutral context runtime.</div>
+          <div class="preview-message user">Find the login bug and show me which files matter before changing anything.</div>
           <div class="preview-message assistant">
-            Stored as memory, linked to project entity, and logged as a context event.
+            Retrieved AuthController.java, login.js, session table notes, and the last deployment event.
           </div>
-          <div class="preview-message user">What context would you use to explain the architecture?</div>
+          <div class="preview-message user">Explain the plan, risks, and tests first.</div>
           <div class="preview-message assistant">
-            Retrieved 6 items: memory, source chunk, graph relationship, event, and pgvector match.
+            Plan ready. No files changed yet. Review selected context and approve the patch.
           </div>
         </div>
         <div class="preview-composer">
-          <span>Ask anything about your stored context...</span>
+          <span>Ask the coding assistant...</span>
           <button onclick="startDemo()">Start</button>
         </div>
       </div>
       <div class="context-rail">
-        <div class="rail-card active"><span>Memory</span><strong>User goal stored</strong><small>importance 0.94</small></div>
-        <div class="rail-card"><span>Source</span><strong>Architecture note</strong><small>text + vector match</small></div>
-        <div class="rail-card"><span>Graph</span><strong>CloudQueryX uses pgvector</strong><small>relationship match</small></div>
-        <div class="rail-card"><span>Bundle</span><strong>3,812 tokens</strong><small>ready for LLM</small></div>
+        <div class="rail-card active"><span>Files</span><strong>AuthController.java</strong><small>selected for task</small></div>
+        <div class="rail-card"><span>Memory</span><strong>Session bug history</strong><small>project recall</small></div>
+        <div class="rail-card"><span>Plan</span><strong>Review before edit</strong><small>user approval</small></div>
+        <div class="rail-card"><span>Bundle</span><strong>8,420 tokens</strong><small>ready for LLM</small></div>
       </div>
     </div>
   </section>
@@ -68,44 +68,44 @@
     <div class="section-inner">
       <div class="flow-heading">
         <p class="hero-tag light">What happens before the answer</p>
-        <h2>CloudQueryX makes the hidden chatbot memory layer visible.</h2>
-        <p class="section-lede">Most assistants answer from a prompt you cannot inspect. This demo shows every step: what gets stored, what gets recalled, why it was selected, and what context reached the LLM.</p>
+        <h2>CloudQueryX makes AI coding understandable.</h2>
+        <p class="section-lede">Most AI coding tools hide the retrieval and reasoning step. CloudQueryX shows which files, memories, logs, and events were selected before the model writes an answer or proposes a patch.</p>
       </div>
       <div class="ai-flow-board" aria-label="CloudQueryX assistant memory flow">
         <div class="flow-node input">
           <span>01</span>
-          <strong>User message</strong>
-          <small>"Remember my project and explain it later."</small>
+          <strong>Coding task</strong>
+          <small>"Fix login failure after deploy."</small>
         </div>
         <div class="flow-link"></div>
         <div class="flow-node store">
           <span>02</span>
-          <strong>Store</strong>
-          <small>memory, source, entity, relationship, event</small>
+          <strong>Index project</strong>
+          <small>files, docs, logs, memory, events</small>
         </div>
         <div class="flow-link"></div>
         <div class="flow-node retrieve">
           <span>03</span>
-          <strong>Retrieve</strong>
-          <small>pgvector + full text + graph + freshness</small>
+          <strong>Retrieve code</strong>
+          <small>file chunks + full text + graph + freshness</small>
         </div>
         <div class="flow-link"></div>
         <div class="flow-node rank">
           <span>04</span>
-          <strong>Rank</strong>
-          <small>semantic match, importance, recency, evidence</small>
+          <strong>Explain plan</strong>
+          <small>selected files, assumptions, risks</small>
         </div>
         <div class="flow-link"></div>
         <div class="flow-node bundle">
           <span>05</span>
-          <strong>Context bundle</strong>
-          <small>token-budgeted evidence sent to the LLM</small>
+          <strong>Review patch</strong>
+          <small>diff first, apply after approval</small>
         </div>
         <div class="flow-link"></div>
         <div class="flow-node answer">
           <span>06</span>
-          <strong>Answer + learn</strong>
-          <small>LLM answers; CloudQueryX stores useful new context</small>
+          <strong>Commit + learn</strong>
+          <small>save work, update memory, push to GitHub</small>
         </div>
       </div>
     </div>
@@ -113,14 +113,14 @@
 
   <section class="capabilities" id="data-preview">
     <div class="section-inner">
-      <h2>Home and Data, nothing hidden.</h2>
-      <p class="section-lede">The public demo has only two surfaces: Home is the playground, Data shows exactly what CloudQueryX stored and retrieved.</p>
+      <h2>Code first. Context always visible.</h2>
+      <p class="section-lede">The product is now a cloud coding assistant. The context engine remains visible so users understand why AI suggested each plan, file, and change.</p>
       <div class="pipeline-strip">
-        <div><span>01</span><strong>Chat</strong><small>ask, teach, correct</small></div>
-        <div><span>02</span><strong>Store</strong><small>memories, sources, graph, events</small></div>
-        <div><span>03</span><strong>Retrieve</strong><small>text, vectors, freshness</small></div>
-        <div><span>04</span><strong>Explain</strong><small>scores and reasons</small></div>
-        <div><span>05</span><strong>Delete</strong><small>temporary demo cleanup</small></div>
+        <div><span>01</span><strong>Upload</strong><small>files or GitHub repo</small></div>
+        <div><span>02</span><strong>Index</strong><small>code chunks + project memory</small></div>
+        <div><span>03</span><strong>Ask</strong><small>coding task with context</small></div>
+        <div><span>04</span><strong>Review</strong><small>plan, risks, diff</small></div>
+        <div><span>05</span><strong>Save</strong><small>autosave, commit, push</small></div>
       </div>
       <div class="cap-grid">
         <div class="cap-item">
@@ -274,14 +274,14 @@
       </div>
 
       <nav class="sidebar-nav">
-        <a class="sidebar-item active" data-section="playground">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l3-3-3-3M8 12h4"/></svg>
-          Home
+        <a class="sidebar-item active" data-section="code">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4L2 8l3.5 4M10.5 4L14 8l-3.5 4"/></svg>
+          Workspace
         </a>
 
-        <a class="sidebar-item" data-section="code">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4L2 8l3.5 4M10.5 4L14 8l-3.5 4"/></svg>
-          Code
+        <a class="sidebar-item" data-section="playground">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l3-3-3-3M8 12h4"/></svg>
+          Chat
         </a>
 
         <a class="sidebar-item" data-section="explorer">
@@ -319,11 +319,11 @@
         <div id="section-overview" class="section active-section">
           <div class="section-page">
             <div class="section-header">
-              <h2>Context Home</h2>
-              <p>What CloudQueryX has stored for this account</p>
+              <h2>Workspace Overview</h2>
+              <p>Cloud projects, selected context, and saved coding memory</p>
             </div>
             <div class="overview-explainer">
-              <p><strong>Simple version:</strong> CloudQueryX is the memory and context layer for an AI app. The chat page is only a demo that shows how an LLM can use retrieved context before answering.</p>
+              <p><strong>Simple version:</strong> CloudQueryX is a cloud coding assistant with a visible context engine. The assistant can use project files, source chunks, graph data, events, and long-term memory before it explains or changes code.</p>
             </div>
             <div id="getting-started" class="card getting-started-card" style="display:none">
               <div class="card-head">
@@ -339,11 +339,11 @@
                 <div class="quick-actions">
                   <div class="quick-action" onclick="showSection('playground')">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l3-3-3-3M8 12h4"/></svg>
-                    Open Assistant Demo
+                    Open Context Chat
                   </div>
                   <div class="quick-action" onclick="showSection('explorer')">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
-                    Review Stored Context
+                    Review Coding Context
                   </div>
                 </div>
               </div>
@@ -363,8 +363,8 @@
             <div class="chat-main">
               <div class="demo-topbar">
                 <div>
-                  <strong>Temporary public demo</strong>
-                  <span>Your context is stored only for this browser session and deleted when you end the demo or close the tab.</span>
+                  <strong>Context chat</strong>
+                  <span>Use this to see how the coding assistant stores facts, retrieves context, and explains what it used.</span>
                 </div>
                 <div class="demo-meter">
                   <span id="demo-message-count">0 / 20 messages</span>
@@ -375,8 +375,8 @@
                 <div class="chat-message assistant">
                   <div class="chat-avatar">CQX</div>
                   <div class="chat-bubble">
-                    <strong>Assistant demo</strong>
-                    <p>Chat normally. Before each reply, CloudQueryX retrieves stored context, builds a token-budgeted bundle, sends that bundle to the LLM, then stores useful new facts automatically.</p>
+                    <strong>Context assistant</strong>
+                    <p>Ask naturally. Before each reply, CloudQueryX retrieves saved project context, builds a token-budgeted bundle, sends that bundle to the LLM, then stores useful new facts automatically.</p>
                   </div>
                 </div>
               </div>
@@ -389,7 +389,7 @@
                 <button type="button" class="chip" onclick="fillScenario('evidence')">Show evidence</button>
               </div>
               <div class="chat-composer">
-                <textarea id="chat-input" rows="2" placeholder="Ask something or store a fact..."></textarea>
+                <textarea id="chat-input" rows="2" placeholder="Ask about your project context or store a fact..."></textarea>
                 <button class="btn-primary" onclick="sendAssistantMessage()">Send</button>
               </div>
               <div id="chat-error" class="form-result"></div>
@@ -446,15 +446,34 @@
             <div class="section-header-row">
               <div>
                 <h2>Cloud Coding Assistant</h2>
-                <p>Upload project files, let CloudQueryX index the code, then ask coding questions with visible context.</p>
+                <p>Upload or connect a project, ask coding tasks, inspect selected context, review plans, and keep your work available from any browser.</p>
               </div>
-              <button class="btn-sm" onclick="showToast('GitHub connect, commit, and push are the next production slice.', 'info')">GitHub coming next</button>
+              <button class="btn-sm" onclick="showToast('GitHub OAuth is disabled until the GitHub client id and callback URL are configured.', 'info')">Connect GitHub</button>
+            </div>
+
+            <div class="code-product-strip">
+              <div>
+                <strong>Cloud files</strong>
+                <span>S3-backed project storage</span>
+              </div>
+              <div>
+                <strong>Context planner</strong>
+                <span>retrieval reasons and token budget</span>
+              </div>
+              <div>
+                <strong>Human control</strong>
+                <span>plan and diff before edits</span>
+              </div>
+              <div>
+                <strong>Portable work</strong>
+                <span>open projects from any browser</span>
+              </div>
             </div>
 
             <div class="code-workspace">
               <div class="code-panel">
                 <h3>Project</h3>
-                <p class="muted">Create a cloud project. Files are stored in S3 when configured and indexed as CloudQueryX sources.</p>
+                <p class="muted">Create a cloud project. Files are stored in S3 when configured and indexed as CloudQueryX sources for retrieval.</p>
                 <label>Project name</label>
                 <input type="text" id="code-project-name" placeholder="cloudqueryx-web">
                 <label>Description</label>
@@ -464,8 +483,8 @@
               </div>
 
               <div class="code-panel code-file-panel">
-                <h3>Files</h3>
-                <p class="muted">Paste a file for the MVP. Bulk folder upload and GitHub import come next.</p>
+                <h3>Project files</h3>
+                <p class="muted">Save code, config, docs, or logs. Each file becomes cloud storage plus searchable context.</p>
                 <label>File path</label>
                 <input type="text" id="code-file-path" placeholder="src/main/java/App.java">
                 <label>Content</label>
@@ -476,10 +495,33 @@
 
               <div class="code-panel code-assistant-panel">
                 <h3>Ask the coding assistant</h3>
-                <p class="muted">CloudQueryX retrieves relevant files/chunks first, then the LLM explains the plan, risks, and verification.</p>
+                <p class="muted">CloudQueryX retrieves relevant files and memory first, then the LLM explains the plan, risks, verification steps, and patch strategy.</p>
                 <textarea id="code-task" rows="5" placeholder="Example: Find why login fails after deployment and explain which files matter."></textarea>
                 <button class="btn-primary full" onclick="askCodeAssistant()">Ask with code context</button>
                 <div id="code-answer" class="code-answer muted">Upload files, then ask a coding question.</div>
+              </div>
+            </div>
+
+            <div class="code-workflow-board">
+              <div>
+                <span>01</span>
+                <strong>Retrieve</strong>
+                <p>Find related files, chunks, memories, events, and graph relationships before the model answers.</p>
+              </div>
+              <div>
+                <span>02</span>
+                <strong>Plan</strong>
+                <p>Show selected context, assumptions, risks, and test strategy so the user understands the change.</p>
+              </div>
+              <div>
+                <span>03</span>
+                <strong>Review</strong>
+                <p>Patch review is the next production slice: no silent edits, no hidden file changes.</p>
+              </div>
+              <div>
+                <span>04</span>
+                <strong>Commit</strong>
+                <p>GitHub commit and push activate after OAuth is configured for the deployment.</p>
               </div>
             </div>
           </div>

@@ -1278,6 +1278,31 @@ button:disabled { opacity: 0.65; cursor: wait; }
    CODE WORKSPACE
    ═══════════════════════════════════════════════════════════════ */
 .code-page { max-width: 1440px; }
+.code-product-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.code-product-strip div {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid rgba(22, 163, 111, 0.18);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(22, 163, 111, 0.08), rgba(255,255,255,0.92));
+}
+.code-product-strip strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.code-product-strip span {
+  display: block;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
 .code-workspace {
   display: grid;
   grid-template-columns: 280px minmax(360px, 1fr) minmax(360px, 1fr);
@@ -1377,6 +1402,44 @@ button:disabled { opacity: 0.65; cursor: wait; }
 .context-chip.light strong { color: var(--brand); }
 .context-chip.light p { color: var(--ink-secondary); }
 .context-chip.light small { color: var(--muted); }
+
+.code-workflow-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.code-workflow-board div {
+  min-height: 148px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #fbfcf9;
+}
+.code-workflow-board span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+.code-workflow-board strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-size: 14px;
+}
+.code-workflow-board p {
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    DATA EXPLORER
@@ -1867,6 +1930,13 @@ button:disabled { opacity: 0.65; cursor: wait; }
   .api-layout { grid-template-columns: 1fr; }
   .api-sidebar-inner { border-right: none; border-bottom: 1px solid var(--border); }
   .settings-grid { grid-template-columns: 1fr; }
+  .code-product-strip,
+  .code-workflow-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .code-workspace {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1930,6 +2000,17 @@ button:disabled { opacity: 0.65; cursor: wait; }
   .chat-composer .btn-primary {
     min-width: 62px;
     padding: 0 12px;
+  }
+  .code-product-strip,
+  .code-workflow-board {
+    grid-template-columns: 1fr;
+  }
+  .code-product-strip div,
+  .code-workflow-board div {
+    min-height: auto;
+  }
+  .code-panel {
+    padding: 14px;
   }
   .side-panel { padding-left: 12px; padding-right: 12px; }
   .toast {

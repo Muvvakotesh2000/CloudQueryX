@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════════ */
 var token = sessionStorage.getItem('cqx_demo_token');
 var currentDbId = null;
-var currentSection = 'playground';
+var currentSection = 'code';
 var currentExplorerTab = 'memories';
 var currentCodeProjectId = null;
 var chatMemorySuggestions = [];
@@ -75,7 +75,7 @@ async function startDemo() {
   sessionStorage.setItem('cqx_demo_mode', '1');
   sessionStorage.setItem('cqx_demo_messages', '0');
   localStorage.removeItem('cqx_token');
-  showToast('Demo ready. Your data will be deleted when this session ends.');
+  showToast('Cloud coding workspace ready. Temporary data will be deleted when this session ends.');
   showApp(res.user, res.defaultDatabase);
   updateDemoMeter();
 }
@@ -313,7 +313,7 @@ function openDatabase(db) {
   document.getElementById('sidebar-db-name').textContent = db.name || 'Context Database';
   document.getElementById('no-db-view').style.display = 'none';
   document.getElementById('db-view').style.display = 'block';
-  showSection('playground');
+  showSection('code');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -336,7 +336,7 @@ function checkHealth() {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function showSection(name) {
-  if (name !== 'playground' && name !== 'code' && name !== 'explorer') name = 'playground';
+  if (name !== 'playground' && name !== 'code' && name !== 'explorer') name = 'code';
   currentSection = name;
   document.querySelectorAll('#db-view > .section').forEach(function(s) {
     s.classList.remove('active-section');
@@ -433,9 +433,9 @@ function renderGettingStarted(dataCount) {
     },
     {
       done: !!localStorage.getItem('cqx_playground_used'),
-      title: 'Try the assistant demo',
-      desc: 'Ask a question and watch CloudQueryX choose context before the model answers.',
-      action: 'Open Assistant Demo', fn: "showSection('playground')"
+      title: 'Try the coding assistant',
+      desc: 'Upload a file, ask a coding task, and inspect exactly which context CloudQueryX selected.',
+      action: 'Open Code Workspace', fn: "showSection('code')"
     }
   ];
 
@@ -856,6 +856,7 @@ function renderCodeAnswer(res, task) {
   answer.innerHTML =
     '<div class="code-answer-block">' +
       '<h4>Answer</h4>' +
+      '<div class="bundle-summary"><span>' + esc(res.model || 'model') + '</span><span>review first</span><span>no files changed</span></div>' +
       '<p>' + formatAssistantText(res.answer || 'No answer returned.') + '</p>' +
     '</div>' +
     '<div class="code-answer-block">' +

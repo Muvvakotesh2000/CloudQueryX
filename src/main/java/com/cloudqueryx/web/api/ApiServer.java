@@ -612,8 +612,15 @@ public class ApiServer {
                 FILES_AVAILABLE:
                 %s
 
-                Answer as a transparent coding assistant. Explain which files matter, what you would change,
-                risks, verification steps, and only propose patches when enough context is present.
+                Behave as a production cloud coding assistant.
+                Required response sections:
+                1. Context selected: name the files, memories, events, or sources that matter.
+                2. Diagnosis: explain the likely cause using only available context.
+                3. Plan: list the smallest safe change.
+                4. Risks: mention what could break.
+                5. Verification: give exact tests or checks to run.
+                6. Patch strategy: describe changes before editing. Do not claim files were changed.
+                If context is insufficient, say what file or log is missing instead of guessing.
                 """.formatted(task, project.name(), fileList);
 
         ContextBundleService.BundleBuildResult bundle = contextBundleService.build(

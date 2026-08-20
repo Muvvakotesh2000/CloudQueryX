@@ -1546,13 +1546,25 @@ button:disabled { opacity: 0.65; cursor: wait; }
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════ */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   html, body { overflow-x: hidden; }
   .mobile-header { display: flex; }
-  .sidebar { transform: translateX(-100%); }
+  .app-layout {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .sidebar {
+    transform: translateX(-100%);
+    width: min(82vw, 280px);
+  }
   .sidebar.open { transform: translateX(0); }
   .sidebar-overlay.open { display: block; }
-  .content-area { margin-left: 0; }
+  .content-area {
+    margin-left: 0 !important;
+    width: 100%;
+    min-width: 0;
+  }
 
   .playground-hero {
     grid-template-columns: 1fr;
@@ -1622,12 +1634,14 @@ button:disabled { opacity: 0.65; cursor: wait; }
   .demo-topbar span { line-height: 1.45; }
   .demo-meter { width: 100%; justify-content: space-between; }
   .chat-layout {
+    width: 100%;
     height: auto;
     min-height: calc(100dvh - 57px);
     overflow: visible;
     flex-direction: column;
   }
   .chat-main {
+    width: 100%;
     min-height: calc(100dvh - 57px);
   }
   .chat-thread {
@@ -1789,9 +1803,6 @@ button:disabled { opacity: 0.65; cursor: wait; }
   .hero h1 { font-size: 24px; }
   .mobile-header {
     padding: 10px 12px;
-  }
-  .sidebar {
-    width: min(82vw, 280px);
   }
   .demo-meter {
     align-items: stretch;

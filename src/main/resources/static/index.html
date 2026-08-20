@@ -35,9 +35,9 @@
 
   <section class="playground-hero" id="playground-preview">
     <div class="playground-copy">
-      <p class="hero-tag">Public context playground</p>
-      <h1>Talk to the demo. Watch the memory engine work.</h1>
-      <p class="hero-desc">CloudQueryX is a context runtime for LLM apps. The assistant is only the demo surface: behind every reply, CloudQueryX stores useful context, retrieves memories, ranks evidence, and builds a token-budgeted bundle.</p>
+      <p class="hero-tag">Device observability playground</p>
+      <h1>Debug device engagement with a context engine.</h1>
+      <p class="hero-desc">CloudQueryX turns telemetry notes, setup funnel events, KPI definitions, logs, graph relationships, and product decisions into explainable context bundles for an LLM. The assistant is only the demo surface.</p>
       <div class="hero-actions">
         <button class="btn-primary" onclick="startDemo()">Open playground</button>
         <a class="btn-outline" href="#data-preview">See stored data</a>
@@ -49,16 +49,16 @@
       <div class="playground-window">
         <div class="window-top">
           <span></span><span></span><span></span>
-          <strong>CloudQueryX Playground</strong>
+          <strong>CloudQueryX Observability Playground</strong>
         </div>
         <div class="preview-chat">
-          <div class="preview-message user">Remember that I am building CloudQueryX as a provider-neutral context runtime.</div>
+          <div class="preview-message user">Store this incident: Fire TV setup completion dropped after firmware 8.1.23.</div>
           <div class="preview-message assistant">
-            Stored as memory, linked to project entity, and logged as a context event.
+            Stored as incident memory, linked firmware to setup funnel, and logged a telemetry event.
           </div>
-          <div class="preview-message user">What context would you use to explain the architecture?</div>
+          <div class="preview-message user">Why did engagement drop and what should the device team inspect?</div>
           <div class="preview-message assistant">
-            Retrieved 6 items: memory, source chunk, graph relationship, event, and pgvector match.
+            Retrieved 7 items: KPI definition, rollout note, log chunk, graph edge, event, and pgvector match.
           </div>
         </div>
         <div class="preview-composer">
@@ -67,9 +67,9 @@
         </div>
       </div>
       <div class="context-rail">
-        <div class="rail-card active"><span>Memory</span><strong>User goal stored</strong><small>importance 0.94</small></div>
-        <div class="rail-card"><span>Source</span><strong>Architecture note</strong><small>text + vector match</small></div>
-        <div class="rail-card"><span>Graph</span><strong>CloudQueryX uses pgvector</strong><small>relationship match</small></div>
+        <div class="rail-card active"><span>Metric</span><strong>Setup completion down</strong><small>importance 0.94</small></div>
+        <div class="rail-card"><span>Source</span><strong>Firmware rollout log</strong><small>text + vector match</small></div>
+        <div class="rail-card"><span>Graph</span><strong>Firmware affects setup funnel</strong><small>relationship match</small></div>
         <div class="rail-card"><span>Bundle</span><strong>3,812 tokens</strong><small>ready for LLM</small></div>
       </div>
     </div>
@@ -78,30 +78,30 @@
   <section class="capabilities" id="data-preview">
     <div class="section-inner">
       <h2>Home and Data, nothing hidden.</h2>
-      <p class="section-lede">The public demo has only two surfaces: Home is the playground, Data shows exactly what CloudQueryX stored and retrieved.</p>
+      <p class="section-lede">The public demo has only two surfaces: Home is the observability playground, Data shows exactly what CloudQueryX stored and retrieved.</p>
       <div class="pipeline-strip">
-        <div><span>01</span><strong>Chat</strong><small>ask, teach, correct</small></div>
-        <div><span>02</span><strong>Store</strong><small>memories, sources, graph, events</small></div>
+        <div><span>01</span><strong>Instrument</strong><small>signals, journeys, KPIs</small></div>
+        <div><span>02</span><strong>Store</strong><small>metrics, logs, graph, events</small></div>
         <div><span>03</span><strong>Retrieve</strong><small>text, vectors, freshness</small></div>
-        <div><span>04</span><strong>Explain</strong><small>scores and reasons</small></div>
-        <div><span>05</span><strong>Delete</strong><small>temporary demo cleanup</small></div>
+        <div><span>04</span><strong>Explain</strong><small>scores, trade-offs, evidence</small></div>
+        <div><span>05</span><strong>Decide</strong><small>incident and product guidance</small></div>
       </div>
       <div class="cap-grid">
         <div class="cap-item">
-          <h3>Memory</h3>
-          <p>Facts, preferences, decisions, feedback, and conversation notes that the assistant can recall later.</p>
+          <h3>Metrics Memory</h3>
+          <p>KPI definitions, launch decisions, product health notes, and incident facts that the assistant can recall later.</p>
         </div>
         <div class="cap-item">
           <h3>Sources</h3>
-          <p>Docs, logs, code snippets, notes, markdown, and config text split into searchable chunks.</p>
+          <p>Telemetry specs, rollout notes, firmware logs, setup journey docs, and config text split into searchable chunks.</p>
         </div>
         <div class="cap-item">
           <h3>Graph</h3>
-          <p>Entities and relationships that connect people, projects, services, databases, and models.</p>
+          <p>Entities and relationships that connect devices, apps, firmware, metrics, services, regions, and customer journeys.</p>
         </div>
         <div class="cap-item">
           <h3>Events</h3>
-          <p>Timeline signals that help CloudQueryX rank fresh changes and important decisions.</p>
+          <p>Timeline signals for deployments, incidents, provisioning failures, funnel drops, and product launches.</p>
         </div>
         <div class="cap-item">
           <h3>Bundles</h3>
@@ -120,23 +120,23 @@
       <div class="proof-header">
         <p class="hero-tag light">Recruiter demo path</p>
         <h2>One demo shows the whole context pipeline.</h2>
-        <p class="section-lede">Teach the assistant a fact, ask a follow-up, then inspect exactly what CloudQueryX retrieved, ranked, sent to the LLM, and stored afterward.</p>
+        <p class="section-lede">Seed a device telemetry scenario, ask a follow-up, then inspect exactly what CloudQueryX retrieved, ranked, sent to the LLM, and stored afterward.</p>
       </div>
       <div class="proof-grid">
         <div class="proof-card">
           <span>Without CloudQueryX</span>
-          <h3>LLM-only apps guess or forget.</h3>
-          <p>The prompt has to carry everything. Memory is hidden in app code, retrieval is hard to explain, and stale context can slip into answers.</p>
+          <h3>LLM-only apps miss operational context.</h3>
+          <p>The prompt has to carry metrics definitions, rollout history, logs, and customer journey notes. Retrieval is hard to explain when context is hidden in app code.</p>
         </div>
         <div class="proof-card strong">
           <span>With CloudQueryX</span>
-          <h3>The model gets a clean context bundle.</h3>
-          <p>CloudQueryX retrieves memories, source chunks, graph relationships, and events, then ranks and trims them before the LLM call.</p>
+          <h3>The model gets an evidence bundle.</h3>
+          <p>CloudQueryX retrieves KPI memories, log chunks, graph relationships, and event timelines, then ranks and trims them before the LLM call.</p>
         </div>
         <div class="proof-card">
           <span>What recruiters see</span>
           <h3>Not just chat. Real backend behavior.</h3>
-          <p>The playground exposes scoring, token budget, freshness, memory writes, and a trace view that explains every answer.</p>
+          <p>The playground exposes scoring, token budget, freshness, automatic memory writes, and a trace view that explains every answer like an operations system.</p>
         </div>
       </div>
     </div>
@@ -144,32 +144,32 @@
 
   <section class="architecture-section" id="architecture">
     <div class="section-inner">
-      <h2>Why It Matters</h2>
-      <p class="section-lede">Without a context runtime, teams wire memory together by hand. CloudQueryX makes context retrieval a product surface instead of hidden glue code.</p>
+      <h2>Why It Matters For Device Metrics</h2>
+      <p class="section-lede">Device teams need trusted observability, consistent instrumentation, and customer intelligence. CloudQueryX makes the context behind an LLM-assisted investigation explicit and inspectable.</p>
       <div class="compare-grid">
         <div class="compare-column">
-          <h3>Typical AI app</h3>
-          <p>Application code stitches together a vector DB, SQL tables, custom memory rows, graph lookup, ranking, and prompt formatting before every LLM call.</p>
+          <h3>Typical metrics assistant</h3>
+          <p>Application code stitches together dashboards, log search, SQL tables, vector notes, graph lookup, ranking, and prompt formatting before every LLM call.</p>
           <ul>
-            <li>Context logic scattered across app code</li>
-            <li>Hard to explain why a fact was selected</li>
-            <li>Token budget handled late in the prompt</li>
+            <li>Metric definitions and telemetry history scattered across tools</li>
+            <li>Hard to explain why a signal was selected</li>
+            <li>Incident context handled late in the prompt</li>
           </ul>
         </div>
         <div class="compare-column strong">
           <h3>With CloudQueryX</h3>
-          <p>Your app asks CloudQueryX for a context bundle. CloudQueryX retrieves, ranks, explains, trims, and formats the context in one place.</p>
+          <p>Your app asks CloudQueryX for an investigation bundle. CloudQueryX retrieves, ranks, explains, trims, and formats the context in one place.</p>
           <ul>
             <li>One context runtime before the model call</li>
-            <li>Every item includes scores and reasons</li>
-            <li>Context is selected before handoff</li>
+            <li>Every metric, log, event, and relationship includes scores and reasons</li>
+            <li>Context is selected before handoff to the model</li>
           </ul>
         </div>
       </div>
       <div class="arch-flow">
         <div class="arch-step">
           <span class="arch-label">Your Application</span>
-          <span class="arch-sub">Chatbot, Agent, Copilot, RAG pipeline</span>
+          <span class="arch-sub">Telemetry assistant, incident copilot, metrics explainer, RAG pipeline</span>
         </div>
         <div class="arch-connector"></div>
         <div class="arch-step highlight">
@@ -182,10 +182,10 @@
         <div class="arch-connector"></div>
         <div class="arch-signals">
           <span>Vectors</span>
-          <span>Memories</span>
+          <span>Metrics</span>
           <span>Graph</span>
           <span>Full-Text</span>
-          <span>Events</span>
+          <span>Telemetry Events</span>
         </div>
         <div class="arch-connector"></div>
         <div class="arch-step">
@@ -194,13 +194,13 @@
         </div>
       </div>
       <div class="arch-stack">
-        <p>Java 17 &middot; ANTLR4 &middot; gRPC &middot; ONNX Runtime &middot; HikariCP &middot; PostgreSQL</p>
+        <p>Java 17 &middot; ANTLR4 &middot; gRPC &middot; HikariCP &middot; PostgreSQL &middot; pgvector &middot; OpenAI demo adapter</p>
       </div>
       <div class="runtime-layers">
         <div><strong>1. User message</strong><span>Question enters the assistant demo.</span></div>
-        <div><strong>2. Retrieve</strong><span>Memory, source chunks, graph, events, full text, and pgvector candidates are collected.</span></div>
-        <div><strong>3. Rank</strong><span>Relevance, text match, freshness, importance, and mode boost determine priority.</span></div>
-        <div><strong>4. Budget</strong><span>Useful context stays full, medium context is trimmed, low signal is excluded.</span></div>
+        <div><strong>2. Retrieve</strong><span>Metrics memory, source chunks, graph, telemetry events, full text, and pgvector candidates are collected.</span></div>
+        <div><strong>3. Rank</strong><span>Relevance, text match, freshness, importance, incident severity, and mode boost determine priority.</span></div>
+        <div><strong>4. Budget</strong><span>Useful evidence stays full, medium context is trimmed, low signal is excluded.</span></div>
         <div><strong>5. Handoff</strong><span>CloudQueryX formats the context bundle; the LLM generates the final answer.</span></div>
         <div><strong>6. Learn</strong><span>Useful facts, entities, relationships, and events are stored for the next turn.</span></div>
       </div>
@@ -334,21 +334,21 @@
                 <div class="chat-message assistant">
                   <div class="chat-avatar">CQX</div>
                   <div class="chat-bubble">
-                    <strong>Assistant demo</strong>
-                    <p>Chat normally. Before each reply, CloudQueryX retrieves stored context, builds a token-budgeted bundle, sends that bundle to the LLM, then stores useful new facts automatically.</p>
+                    <strong>Device observability demo</strong>
+                    <p>Seed telemetry context, ask an investigation question, and inspect how CloudQueryX retrieves metrics, logs, graph relationships, events, and pgvector matches before the LLM answers.</p>
                   </div>
                 </div>
               </div>
               <div class="chat-examples" id="chat-examples">
                 <span class="chat-example-label">Try:</span>
-                <button type="button" class="chip" onclick="fillScenario('identity')">Teach identity</button>
-                <button type="button" class="chip" onclick="fillScenario('preference')">Save preference</button>
-                <button type="button" class="chip" onclick="fillScenario('architecture')">Explain architecture</button>
-                <button type="button" class="chip" onclick="fillScenario('debug')">Debug scenario</button>
+                <button type="button" class="chip" onclick="fillScenario('telemetrySeed')">Seed telemetry scenario</button>
+                <button type="button" class="chip" onclick="fillScenario('funnel')">Investigate funnel drop</button>
+                <button type="button" class="chip" onclick="fillScenario('instrumentation')">Design instrumentation</button>
+                <button type="button" class="chip" onclick="fillScenario('incident')">Incident response</button>
                 <button type="button" class="chip" onclick="fillScenario('evidence')">Show evidence</button>
               </div>
               <div class="chat-composer">
-                <textarea id="chat-input" rows="2" placeholder="Ask something or store a fact..."></textarea>
+                <textarea id="chat-input" rows="2" placeholder="Ask about device metrics, telemetry, incidents, or stored context..."></textarea>
                 <button class="btn-primary" onclick="sendAssistantMessage()">Send</button>
               </div>
               <div id="chat-error" class="form-result"></div>

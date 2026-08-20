@@ -464,12 +464,11 @@ function fillChatExample(btn) {
 
 function fillScenario(kind) {
   var scenarios = {
-    telemetrySeed: 'Store this device observability scenario for the demo. CloudQueryX is being used as a context runtime for a Device Engagement Metrics assistant. Device families include Fire TV, Alexa, Kindle, Ring, Blink, and Tablets. Key KPIs are setup_completion_rate, seven_day_active_rate, app_launch_success_rate, provisioning_failure_rate, video_playback_start_time_ms, and customer_journey_dropoff. Recent incident: Fire TV firmware 8.1.23 rollout caused setup_completion_rate to drop from 94.2% to 88.7% in US-West for new devices. Logs show provisioning retries increased after token_refresh_timeout errors. The telemetry pipeline receives device events, validates instrumentation schema, enriches with device family and firmware version, stores metrics, and builds business intelligence for product teams. CloudQueryX should retrieve memories, source chunks, graph relationships, and events to explain what changed and what the device team should inspect.',
-    funnel: 'Investigate why Fire TV setup completion dropped after firmware 8.1.23. Use stored metrics, source chunks, graph relationships, and events. Explain likely causes, what evidence supports them, and which KPIs the team should monitor next.',
-    instrumentation: 'Design a standardized instrumentation plan for setup, app launch, playback start, provisioning, and engagement signals across Fire TV, Alexa, Kindle, Ring, Blink, and Tablets. Include KPIs, event names, dimensions, validation rules, and ownership trade-offs.',
-    incident: 'Create an incident response plan for token_refresh_timeout causing provisioning failures. Include detection, rollback criteria, dashboards, owner handoffs, and how CloudQueryX should preserve fresh context for follow-up decisions.',
-    evidence: 'Why did you say that? Show the context bundle, ranking reasons, freshness signals, and what new memory or event CloudQueryX stored from this turn.',
-    architecture: 'Explain CloudQueryX architecture as a device observability context runtime and show which memories, sources, graph relationships, and events you used.'
+    identity: 'My name is Kotesh Muvva. I am building CloudQueryX, a provider-neutral Context Runtime for LLM applications.',
+    preference: 'Remember that I prefer concise engineering explanations with clear evidence and minimal fluff.',
+    architecture: 'Explain CloudQueryX architecture and show which memories, sources, graph relationships, and events you used.',
+    debug: 'Debug this deployment issue: Render is serving an old static app.js file after a new GitHub commit. What context should CloudQueryX retrieve?',
+    evidence: 'Why did you say that? Show the context bundle, ranking reasons, and what new memory you stored.'
   };
   var input = document.getElementById('chat-input');
   input.value = scenarios[kind] || scenarios.architecture;
@@ -640,11 +639,11 @@ function renderTraceDebugger(bundle, query) {
   var topReason = items[0] ? (items[0].reason || 'Highest ranked context item selected.') : 'No stored context matched this turn.';
   var steps = [
     ['Input', query ? previewText(query, 90) : 'User message captured.'],
-    ['Retrieve', counts.total + ' candidates selected from metrics memory, logs, sources, graph, and telemetry events.'],
+    ['Retrieve', counts.total + ' candidates selected from memory/source/graph/event context.'],
     ['Rank', topReason],
-    ['Budget', tokens + ' estimated tokens placed into the investigation bundle.'],
-    ['Handoff', 'Formatted context sent to the LLM; CloudQueryX prepares evidence, the LLM writes the answer.'],
-    ['Learn', 'Assistant suggestions are stored as metric memory, source, entity, relationship, or event records.']
+    ['Budget', tokens + ' estimated tokens placed into the context bundle.'],
+    ['Handoff', 'Formatted context sent to the LLM; CloudQueryX does not own the final answer.'],
+    ['Learn', 'Assistant suggestions are stored as memory, source, entity, relationship, or event records.']
   ];
   el.innerHTML =
     '<div class="trace-metrics">' +
@@ -755,27 +754,6 @@ async function saveSuggestedRelationship(suggestion) {
 function suggestMemoryActions(message) {
   var text = message.trim();
   var suggestions = [];
-  var lower = text.toLowerCase();
-  if (/\b(device|telemetry|metric|kpi|engagement|setup|provisioning|firmware|incident|fire tv|alexa|kindle|ring|blink|tablet|customer journey)\b/i.test(text)) {
-    suggestions.push({ type: 'memory', memoryType: 'FACT', title: 'Save metric context', content: text, importance: 0.9, reason: 'Device observability context for future investigations.' });
-    suggestions.push({ type: 'event', eventType: lower.includes('incident') || lower.includes('drop') || lower.includes('failure') ? 'INCIDENT' : 'TELEMETRY_CONTEXT', title: 'Log telemetry event', content: text, reason: 'Operational timeline context.' });
-  }
-  if (/\b(firmware|rollout|schema|pipeline|log|kpi|metric|dashboard|instrumentation|token_refresh_timeout)\b/i.test(text)) {
-    suggestions.push({ type: 'source', sourceType: inferSourceType(text), name: 'Device observability note', title: 'Store telemetry source', content: text, reason: 'Technical observability source text.' });
-  }
-  var deviceNames = ['Fire TV', 'Alexa', 'Kindle', 'Ring', 'Blink', 'Tablets', 'CloudQueryX', 'Supabase PostgreSQL', 'pgvector', 'Telemetry Pipeline', 'Provisioning Service'];
-  deviceNames.forEach(function(name) {
-    if (lower.includes(name.toLowerCase())) {
-      var entityType = name === 'CloudQueryX' ? 'PROJECT' : (name.includes('Pipeline') || name.includes('Service') ? 'SERVICE' : (name.includes('PostgreSQL') || name === 'pgvector' ? 'DATABASE' : 'CONCEPT'));
-      suggestions.push({ type: 'entity', entityType: entityType, name: name, content: name + ' appears in device observability context.', title: 'Save entity: ' + name, reason: 'Named observability entity.' });
-    }
-  });
-  if (lower.includes('fire tv') && lower.includes('firmware')) {
-    suggestions.push({ type: 'relationship', sourceEntity: 'Fire TV', targetEntity: 'Firmware 8.1.23', relationshipType: 'AFFECTED_BY', content: 'Fire TV setup metrics are affected by firmware 8.1.23 rollout context.', title: 'Save relationship', reason: 'Device-to-firmware relationship for graph retrieval.' });
-  }
-  if (lower.includes('cloudqueryx') && (lower.includes('telemetry') || lower.includes('metric'))) {
-    suggestions.push({ type: 'relationship', sourceEntity: 'CloudQueryX', targetEntity: 'Telemetry Pipeline', relationshipType: 'EXPLAINS', content: 'CloudQueryX retrieves telemetry context and builds investigation bundles for metric questions.', title: 'Save relationship', reason: 'Product role in observability workflow.' });
-  }
   if (/\b(my name is|i am|i'm|i work|i build|my project|i use|i used|i made|i created|i wrote|i develop|i code in)\b/i.test(text))
     suggestions.push({ type: 'memory', memoryType: 'FACT', title: 'Save fact', content: text, importance: 0.85, reason: 'Stable personal or project fact.' });
   if (/\b(i prefer|i like|i want|i hate|i don't like|my favorite)\b/i.test(text))
@@ -804,17 +782,16 @@ function suggestMemoryActions(message) {
 
 function inferChatMode(message) {
   var lower = message.toLowerCase();
-  if (lower.includes('bug') || lower.includes('error') || lower.includes('failing') || lower.includes('incident') || lower.includes('failure') || lower.includes('drop')) return 'debugging';
+  if (lower.includes('bug') || lower.includes('error') || lower.includes('failing')) return 'debugging';
   if (lower.includes('code') || lower.includes('build') || lower.includes('implement')) return 'coding';
-  if (lower.includes('plan') || lower.includes('architecture') || lower.includes('design') || lower.includes('instrumentation') || lower.includes('kpi')) return 'planning';
+  if (lower.includes('plan') || lower.includes('architecture') || lower.includes('design')) return 'planning';
   return 'general';
 }
 
 function inferSourceType(text) {
   var lower = text.toLowerCase();
   if (lower.includes('function') || lower.includes('class') || lower.includes('import')) return 'code';
-  if (lower.includes('error') || lower.includes('exception') || lower.includes('stack') || lower.includes('timeout') || lower.includes('failure')) return 'log';
-  if (lower.includes('schema') || lower.includes('pipeline') || lower.includes('instrumentation')) return 'config';
+  if (lower.includes('error') || lower.includes('exception') || lower.includes('stack')) return 'log';
   if (lower.includes('# ') || lower.includes('## ')) return 'markdown';
   return 'note';
 }

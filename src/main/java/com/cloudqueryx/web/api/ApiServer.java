@@ -46,6 +46,7 @@ public class ApiServer {
     private ContextBundleService contextBundleService;
     private OpenAiChatService openAiChatService;
     private TraceEventRepository traceEventRepo;
+    private AssistantMemoryRuntime assistantMemoryRuntime;
     private final TraceEventHub traceEventHub = new TraceEventHub();
     private final ExecutorService traceExecutor = Executors.newFixedThreadPool(4);
     private volatile boolean schemaMigrationStarted;
@@ -92,6 +93,11 @@ public class ApiServer {
         ContextBundleRepository bundleRepo = new ContextBundleRepository(databaseConfig);
         this.traceEventRepo = new TraceEventRepository(databaseConfig);
         TokenEstimator tokenEstimator = new TokenEstimator();
+        this.assistantMemoryRuntime = new AssistantMemoryRuntime(
+                new CompressedProfileRepository(databaseConfig),
+                new AgenticMemoryFileRepository(databaseConfig),
+                memoryRepo,
+                tokenEstimator);
         this.sourceService = new SourceService(sourceRepo, chunkRepo, new ChunkingService(tokenEstimator), embeddingService);
         this.contextRetrievalService = new ContextRetrievalService(
                 memoryRepo, chunkRepo, graphRepo, eventRepo, embeddingService, tokenEstimator);
@@ -599,10 +605,40 @@ public class ApiServer {
         try {
             ContextBundleService.TraceSink sink = (stage, payload) -> publishTrace(dbId,
                     new TraceEvent(requestId, stage, payload));
+            publishTrace(dbId, new TraceEvent(requestId, "intake", Map.of(
+                    "query", query,
+                    "mode", mode,
+                    "tokenBudget", tokenBudget)));
+            AssistantMemoryRuntime.ProfileContext profile = assistantMemoryRuntime.profile(dbId, userId);
+            publishTrace(dbId, new TraceEvent(requestId, "profile_lookup", Map.of(
+                    "tokenEstimate", profile.tokenEstimate(),
+                    "version", profile.version(),
+                    "alwaysInjected", true,
+                    "compacted", profile.compacted(),
+                    "reason", profile.reason(),
+                    "preview", preview(profile.text(), 420))));
+            AssistantMemoryRuntime.AgenticLookup lookup = assistantMemoryRuntime.lookup(dbId, userId, query);
+            publishTrace(dbId, new TraceEvent(requestId, "context_assemble", Map.of(
+                    "tiers", List.of(
+                            Map.of("name", "profile", "strategy", "always_injected", "tokenEstimate", profile.tokenEstimate()),
+                            Map.of("name", "agentic_file_memory", "strategy", "just_in_time", "attempted", lookup.attempted()),
+                            Map.of("name", "retrieved_context", "strategy", "ranked_and_trimmed")))));
+            publishTrace(dbId, new TraceEvent(requestId, "agentic_lookup", Map.of(
+                    "attempted", lookup.attempted(),
+                    "command", lookup.command(),
+                    "resultCount", lookup.files().size(),
+                    "files", lookup.files(),
+                    "reason", lookup.reason())));
             ContextBundleService.BundleBuildResult result = contextBundleService.buildTraced(
                     sink, dbId, userId, query, targetModel, tokenBudget, mode, includeExplanations,
-                    sourceTypes, includeMemories, includeSources, includeGraph, includeEvents);
+                    sourceTypes, includeMemories, includeSources, includeGraph, includeEvents,
+                    profile.text(), lookup.files());
             traceEventRepo.attachBundle(dbId, requestId, result.contextBundleId());
+            publishTrace(dbId, new TraceEvent(requestId, result.contextBundleId(), "write_time_extraction",
+                    Map.of("strategy", "assistant JSON memorySuggestions", "when", "after_response", "automatic", true),
+                    Instant.now()));
+            publishTrace(dbId, new TraceEvent(requestId, result.contextBundleId(), "compaction_check",
+                    assistantMemoryRuntime.compactionCheck(profile, result.estimatedTokens()), Instant.now()));
             publishTrace(dbId, new TraceEvent(requestId, result.contextBundleId(), "complete",
                     Map.of("bundle", bundleToMap(result)), Instant.now()));
         } catch (Exception e) {
@@ -610,6 +646,12 @@ public class ApiServer {
         } finally {
             traceEventHub.close(requestId);
         }
+    }
+
+    private String preview(String value, int max) {
+        if (value == null) return "";
+        String normalized = value.strip();
+        return normalized.length() <= max ? normalized : normalized.substring(0, max) + "...";
     }
 
     private void publishTrace(String dbId, TraceEvent event) {

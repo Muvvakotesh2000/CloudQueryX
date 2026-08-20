@@ -403,12 +403,16 @@
                   <p class="side-hint">Live backend events from the context planner. Replay uses the same schema.</p>
                   <div id="cognition-trace" class="side-body cognition-trace">
                     <div class="trace-stage-row">
-                      <span data-trace-stage="query">Query</span>
+                      <span data-trace-stage="intake">Intake</span>
+                      <span data-trace-stage="profile">Profile</span>
+                      <span data-trace-stage="assemble">Assemble</span>
+                      <span data-trace-stage="agentic">Agentic Lookup</span>
                       <span data-trace-stage="retrieve">Retrieve</span>
                       <span data-trace-stage="rank">Rank</span>
                       <span data-trace-stage="policy">Conflict+Policy</span>
                       <span data-trace-stage="trim">Trim</span>
                       <span data-trace-stage="bundle">Bundle -> LLM</span>
+                      <span data-trace-stage="compact">Compact</span>
                     </div>
                     <div class="trace-live-counters">
                       <span>Candidates <b id="trace-candidates">0</b></span>

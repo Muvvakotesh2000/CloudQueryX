@@ -498,7 +498,9 @@ async function sendAssistantMessage() {
     sessionStorage.setItem('cqx_demo_messages', String(demoMessageCount));
     updateDemoMeter();
   }
+  renderMiniFlow('Message');
   appendChatMessage('user', message);
+  renderMiniFlow('Retrieve');
   appendChatMessage('assistant', 'Building context bundle...', true);
 
   var res = await api('/api/assistant/chat', {
@@ -541,17 +543,23 @@ async function sendAssistantMessage() {
   }
   removeTypingMessage();
   if (res.error) {
+    renderMiniFlow('Message');
     error.textContent = res.error;
     appendChatMessage('assistant', 'Could not complete the request: ' + res.error);
     return;
   }
+  renderMiniFlow('Rank');
+  renderMiniFlow('Bundle');
   renderChatContext(res.contextBundle || {}, message);
+  renderMiniFlow('Answer');
   appendChatMessage('assistant', res.answer || 'No answer returned.');
   chatMemorySuggestions = normalizeMemorySuggestions(res.memorySuggestions || []);
   if (chatMemorySuggestions.length === 0) {
     chatMemorySuggestions = normalizeMemorySuggestions(suggestMemoryActions(message));
   }
+  renderMiniFlow('Store');
   await autoStoreAssistantSuggestions();
+  renderMiniFlow('Learn');
   if (chatMemorySuggestions.length === 0) renderAutoSavedContext();
 }
 
@@ -652,6 +660,17 @@ function renderTraceDebugger(bundle, query) {
     '<ol class="trace-list">' + steps.map(function(step) {
       return '<li><strong>' + esc(step[0]) + '</strong><p>' + esc(step[1]) + '</p></li>';
     }).join('') + '</ol>';
+}
+
+function renderMiniFlow(activeLabel) {
+  var el = document.getElementById('chat-flow-visual');
+  if (!el) return;
+  var labels = ['Message', 'Retrieve', 'Rank', 'Bundle', 'Answer', 'Store', 'Learn'];
+  var activeIndex = Math.max(0, labels.indexOf(activeLabel || 'Message'));
+  el.innerHTML = '<div class="mini-flow">' + labels.map(function(label, idx) {
+    var cls = idx < activeIndex ? 'done' : (idx === activeIndex ? 'active' : '');
+    return '<span class="' + cls + '">' + esc(label) + '</span>';
+  }).join('') + '</div>';
 }
 
 function countBundleTypes(items) {

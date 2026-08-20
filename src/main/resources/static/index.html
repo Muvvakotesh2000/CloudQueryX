@@ -15,21 +15,9 @@
   <nav class="landing-nav">
     <div class="nav-container">
       <a href="/" class="logo-mark">CloudQueryX</a>
-      <div class="nav-links">
-        <a href="#playground-preview">Playground</a>
-        <a href="#data-preview">Data</a>
-      </div>
       <div class="nav-actions">
         <button class="btn-primary-sm" onclick="startDemo()">Start free playground</button>
       </div>
-      <button class="mobile-toggle" onclick="toggleMobileMenu()">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h14M3 10h14M3 15h14"/></svg>
-      </button>
-    </div>
-    <div class="mobile-menu" id="mobile-menu">
-      <a href="#playground-preview" onclick="toggleMobileMenu()">Playground</a>
-      <a href="#data-preview" onclick="toggleMobileMenu()">Data</a>
-      <button class="btn-primary-sm" onclick="startDemo(); toggleMobileMenu()">Start free playground</button>
     </div>
   </nav>
 
@@ -71,6 +59,53 @@
         <div class="rail-card"><span>Source</span><strong>Architecture note</strong><small>text + vector match</small></div>
         <div class="rail-card"><span>Graph</span><strong>CloudQueryX uses pgvector</strong><small>relationship match</small></div>
         <div class="rail-card"><span>Bundle</span><strong>3,812 tokens</strong><small>ready for LLM</small></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ai-flow-section">
+    <div class="section-inner">
+      <div class="flow-heading">
+        <p class="hero-tag light">What happens before the answer</p>
+        <h2>CloudQueryX makes the hidden chatbot memory layer visible.</h2>
+        <p class="section-lede">Most assistants answer from a prompt you cannot inspect. This demo shows every step: what gets stored, what gets recalled, why it was selected, and what context reached the LLM.</p>
+      </div>
+      <div class="ai-flow-board" aria-label="CloudQueryX assistant memory flow">
+        <div class="flow-node input">
+          <span>01</span>
+          <strong>User message</strong>
+          <small>"Remember my project and explain it later."</small>
+        </div>
+        <div class="flow-link"></div>
+        <div class="flow-node store">
+          <span>02</span>
+          <strong>Store</strong>
+          <small>memory, source, entity, relationship, event</small>
+        </div>
+        <div class="flow-link"></div>
+        <div class="flow-node retrieve">
+          <span>03</span>
+          <strong>Retrieve</strong>
+          <small>pgvector + full text + graph + freshness</small>
+        </div>
+        <div class="flow-link"></div>
+        <div class="flow-node rank">
+          <span>04</span>
+          <strong>Rank</strong>
+          <small>semantic match, importance, recency, evidence</small>
+        </div>
+        <div class="flow-link"></div>
+        <div class="flow-node bundle">
+          <span>05</span>
+          <strong>Context bundle</strong>
+          <small>token-budgeted evidence sent to the LLM</small>
+        </div>
+        <div class="flow-link"></div>
+        <div class="flow-node answer">
+          <span>06</span>
+          <strong>Answer + learn</strong>
+          <small>LLM answers; CloudQueryX stores useful new context</small>
+        </div>
       </div>
     </div>
   </section>
@@ -372,6 +407,15 @@
                   <h4>Trace debugger</h4>
                   <p class="side-hint">The infrastructure steps behind the answer.</p>
                   <div id="chat-trace-debugger" class="side-body"><p class="muted">No trace yet.</p></div>
+                </div>
+                <div class="side-section">
+                  <h4>Live memory flow</h4>
+                  <p class="side-hint">A visual version of what happened before this answer.</p>
+                  <div id="chat-flow-visual" class="side-body">
+                    <div class="mini-flow idle">
+                      <span>Message</span><span>Retrieve</span><span>Rank</span><span>Bundle</span><span>Answer</span><span>Store</span><span>Learn</span>
+                    </div>
+                  </div>
                 </div>
                 <div class="side-section">
                   <h4>Memory written after this turn</h4>

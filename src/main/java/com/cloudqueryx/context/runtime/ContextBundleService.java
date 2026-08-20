@@ -40,19 +40,8 @@ public class ContextBundleService {
                                          boolean includeExplanations, List<String> sourceTypes,
                                          boolean includeMemories, boolean includeSources,
                                          boolean includeGraph, boolean includeEvents) {
-        return buildTraced(trace, databaseId, userId, query, targetModel, tokenBudget, mode, includeExplanations,
-                sourceTypes, includeMemories, includeSources, includeGraph, includeEvents, "", List.of());
-    }
-
-    public BundleBuildResult buildTraced(TraceSink trace, String databaseId, String userId, String query,
-                                         String targetModel, int tokenBudget, String mode,
-                                         boolean includeExplanations, List<String> sourceTypes,
-                                         boolean includeMemories, boolean includeSources,
-                                         boolean includeGraph, boolean includeEvents,
-                                         String profileContext,
-                                         List<Map<String, Object>> agenticFiles) {
         return buildInternal(trace, databaseId, userId, query, targetModel, tokenBudget, mode, includeExplanations,
-                sourceTypes, includeMemories, includeSources, includeGraph, includeEvents, profileContext, agenticFiles);
+                sourceTypes, includeMemories, includeSources, includeGraph, includeEvents);
     }
 
     private BundleBuildResult buildInternal(TraceSink trace, String databaseId, String userId, String query,
@@ -60,17 +49,6 @@ public class ContextBundleService {
                                             boolean includeExplanations, List<String> sourceTypes,
                                             boolean includeMemories, boolean includeSources,
                                             boolean includeGraph, boolean includeEvents) {
-        return buildInternal(trace, databaseId, userId, query, targetModel, tokenBudget, mode, includeExplanations,
-                sourceTypes, includeMemories, includeSources, includeGraph, includeEvents, "", List.of());
-    }
-
-    private BundleBuildResult buildInternal(TraceSink trace, String databaseId, String userId, String query,
-                                            String targetModel, int tokenBudget, String mode,
-                                            boolean includeExplanations, List<String> sourceTypes,
-                                            boolean includeMemories, boolean includeSources,
-                                            boolean includeGraph, boolean includeEvents,
-                                            String profileContext,
-                                            List<Map<String, Object>> agenticFiles) {
         if (query == null || query.isBlank()) throw new IllegalArgumentException("query required");
         String bundleId = UUID.randomUUID().toString();
         ModelContextAdapter adapter = formatterService.adapter(targetModel);
@@ -110,7 +88,6 @@ public class ContextBundleService {
         }
         int estimatedTokens = selected.stream().mapToInt(TokenBudgetOptimizer.BundleCandidate::tokenEstimate).sum();
         String formatted = adapter.format(query, mode, selected);
-        formatted = layeredContext(profileContext, agenticFiles, formatted);
 
         ContextBundleRepository.BundleRow bundle = new ContextBundleRepository.BundleRow(
                 bundleId, databaseId, userId, query, adapter.modelKey(),
@@ -138,29 +115,6 @@ public class ContextBundleService {
                 estimatedTokens, adapter.estimatedCostUsd(estimatedTokens), "VALID",
                 adapter.supportsPromptCaching(), formatted,
                 toResponseItems(items, includeExplanations));
-    }
-
-    private String layeredContext(String profileContext, List<Map<String, Object>> agenticFiles, String retrievedContext) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("<cloudqueryx_layered_context>\n");
-        sb.append("<tier name=\"profile\" inclusion=\"always_injected\">\n");
-        sb.append(profileContext == null || profileContext.isBlank() ? "No compressed profile available yet." : profileContext);
-        sb.append("\n</tier>\n");
-        sb.append("<tier name=\"agentic_file_memory\" inclusion=\"just_in_time\">\n");
-        if (agenticFiles == null || agenticFiles.isEmpty()) {
-            sb.append("No agentic memory files were needed for this turn.\n");
-        } else {
-            for (Map<String, Object> file : agenticFiles) {
-                sb.append("FILE ").append(file.getOrDefault("path", "/memory/unknown.md")).append('\n')
-                        .append(file.getOrDefault("content", "")).append("\n\n");
-            }
-        }
-        sb.append("</tier>\n");
-        sb.append("<tier name=\"retrieved_context\" inclusion=\"ranked_and_trimmed\">\n");
-        sb.append(retrievedContext);
-        sb.append("\n</tier>\n");
-        sb.append("</cloudqueryx_layered_context>");
-        return sb.toString();
     }
 
     public Optional<ContextBundleRepository.BundleWithItems> get(String databaseId, String bundleId) {

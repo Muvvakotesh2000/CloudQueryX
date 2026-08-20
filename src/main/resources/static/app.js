@@ -678,7 +678,7 @@ function renderMiniFlow(activeLabel) {
 
 async function startCognitionTrace(query, mode) {
   resetCognitionTrace();
-  setTraceStage('intake');
+  setTraceStage('query');
   if (!window.EventSource) {
     renderTraceFallback('Live SSE is not available in this browser. Showing static context after the answer returns.');
     return;
@@ -703,7 +703,7 @@ async function startCognitionTrace(query, mode) {
   }
   if (cognitionTraceSource) cognitionTraceSource.close();
   cognitionTraceSource = new EventSource(res.eventsUrl);
-  ['intake', 'profile_lookup', 'context_assemble', 'agentic_lookup', 'retrieve', 'rank', 'conflict_check', 'policy_filter', 'trim', 'bundle', 'handoff', 'response', 'write_time_extraction', 'compaction_check', 'complete', 'error'].forEach(function(stage) {
+  ['retrieve', 'rank', 'conflict_check', 'policy_filter', 'trim', 'bundle', 'handoff', 'response', 'complete', 'error'].forEach(function(stage) {
     cognitionTraceSource.addEventListener(stage, function(e) {
       try { applyCognitionTraceEvent(JSON.parse(e.data)); }
       catch (err) { renderTraceFallback('Trace event parse failed: ' + err.message); }
@@ -717,7 +717,7 @@ async function startCognitionTrace(query, mode) {
 
 function resetCognitionTrace() {
   cognitionTraceState = { candidates: {}, events: [], rawPayload: null, bundleId: null };
-  ['intake', 'profile', 'assemble', 'agentic', 'retrieve', 'rank', 'policy', 'trim', 'bundle', 'compact'].forEach(function(stage) { setTraceStage(stage, false); });
+  ['query', 'retrieve', 'rank', 'policy', 'trim', 'bundle'].forEach(function(stage) { setTraceStage(stage, false); });
   setTraceCounters(0, 0, 0, 0);
   var board = document.getElementById('trace-candidate-board');
   if (board) board.innerHTML = '<p class="muted">Waiting for backend planner events...</p>';
@@ -728,26 +728,7 @@ function resetCognitionTrace() {
 function applyCognitionTraceEvent(event) {
   cognitionTraceState.events.push(event);
   var payload = event.payload || {};
-  if (event.stage === 'intake') {
-    setTraceStage('intake');
-    renderTraceFallback('Intake captured query and memory mode. Waiting for profile lookup...');
-  } else if (event.stage === 'profile_lookup') {
-    setTraceStage('profile');
-    renderTraceFallback('Profile loaded: ' + (payload.tokenEstimate || 0) + ' tokens, version ' + (payload.version || 1) + '. ' + (payload.reason || ''));
-    renderTraceRawPayload(payload);
-  } else if (event.stage === 'context_assemble') {
-    setTraceStage('assemble');
-    renderTraceFallback('Layered context stack assembled: profile + agentic file memory + retrieved context.');
-    renderTraceRawPayload(payload);
-  } else if (event.stage === 'agentic_lookup') {
-    setTraceStage('agentic');
-    (payload.files || []).forEach(function(file) {
-      var id = 'file:' + (file.path || '/memory/file.md');
-      cognitionTraceState.candidates[id] = { id: id, state: 'included', reason: payload.reason || 'Agentic memory file lookup' };
-    });
-    renderTraceCandidates();
-    renderTraceRawPayload(payload);
-  } else if (event.stage === 'retrieve') {
+  if (event.stage === 'retrieve') {
     setTraceStage('retrieve');
     (payload.candidateIds || []).forEach(function(id) { cognitionTraceState.candidates[id] = { id: id, state: 'active', reason: 'Retrieved by backend planner' }; });
     setTraceCounters(payload.count || 0, 0, 0, 0);
@@ -780,12 +761,6 @@ function applyCognitionTraceEvent(event) {
     renderTraceRawPayload(payload);
   } else if (event.stage === 'complete') {
     if (cognitionTraceSource) cognitionTraceSource.close();
-  } else if (event.stage === 'write_time_extraction') {
-    setTraceStage('compact');
-    renderTraceRawPayload(payload);
-  } else if (event.stage === 'compaction_check') {
-    setTraceStage('compact');
-    renderTraceRawPayload(payload);
   } else if (event.stage === 'error') {
     renderTraceFallback(payload.message || 'Trace failed.');
   }
@@ -819,7 +794,7 @@ function shortTraceId(id) {
 }
 
 function setTraceStage(stage, active) {
-  var order = ['intake', 'profile', 'assemble', 'agentic', 'retrieve', 'rank', 'policy', 'trim', 'bundle', 'compact'];
+  var order = ['query', 'retrieve', 'rank', 'policy', 'trim', 'bundle'];
   var target = order.indexOf(stage);
   document.querySelectorAll('[data-trace-stage]').forEach(function(el) {
     var idx = order.indexOf(el.dataset.traceStage);

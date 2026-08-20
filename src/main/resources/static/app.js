@@ -764,6 +764,8 @@ function renderCodeProjects(projects) {
 function selectCodeProject(projectId) {
   currentCodeProjectId = projectId;
   setCodeUploadStatus('Opening project and loading indexed files...', 'info');
+  var answer = document.getElementById('code-answer');
+  if (answer) answer.innerHTML = '<p class="muted">Project opened. Ask a coding question after files are indexed.</p>';
   loadCodeProjects();
   loadCodeFiles();
 }
@@ -861,6 +863,8 @@ async function loadCodeFiles() {
   currentCodeFiles = files;
   if (files.length === 0) {
     box.innerHTML = '<p class="muted">No files indexed yet.</p>';
+    var editor = document.getElementById('code-file-content');
+    if (editor) editor.value = '';
     setCodeUploadStatus('Project opened. No indexed files yet.', 'info');
     return;
   }
@@ -963,11 +967,13 @@ async function uploadLocalProjectFiles(fileList) {
       } else {
         failed++;
         if (!firstError) firstError = res.error;
+        break;
       }
     } catch (e) {
       failed++;
       if (!firstError) firstError = e.message || String(e);
       console.warn('Skipped upload', path, e);
+      break;
     }
   }
   if (saved > 0) {

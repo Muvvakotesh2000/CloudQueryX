@@ -14,6 +14,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.exception.SdkException;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -596,24 +597,41 @@ public class ApiServer {
                 .max()
                 .orElse(0) + 1;
         String s3Key = projectFileStorage.keyFor(session.userId(), project.id(), nextVersion, filePath);
-        projectFileStorage.putText(s3Key, content, contentTypeFor(language));
+        try {
+            projectFileStorage.putText(s3Key, content, contentTypeFor(language));
+        } catch (IllegalStateException e) {
+            sendError(ex, 503, e.getMessage());
+            return;
+        } catch (SdkException e) {
+            log.warn("S3 upload failed for project {} path {}", project.id(), filePath, e);
+            sendError(ex, 503, "S3 upload failed. Check AWS credentials, bucket name, region, and s3:PutObject permission.");
+            return;
+        }
 
-        SourceRepository.SourceRow source = sourceService.create(
-                dbId,
-                session.userId(),
-                sourceTypeForLanguage(language),
-                filePath,
-                content,
-                Map.of(
-                        "origin", "coding-assistant",
-                        "projectId", project.id(),
-                        "path", filePath,
-                        "language", language,
-                        "s3Key", s3Key));
+        SourceRepository.SourceRow source;
+        CodingProjectRepository.FileRow file;
+        try {
+            source = sourceService.create(
+                    dbId,
+                    session.userId(),
+                    sourceTypeForLanguage(language),
+                    filePath,
+                    content,
+                    Map.of(
+                            "origin", "coding-assistant",
+                            "projectId", project.id(),
+                            "path", filePath,
+                            "language", language,
+                            "s3Key", s3Key));
 
-        CodingProjectRepository.FileRow file = codingProjectRepo.upsertFile(
-                project.id(), dbId, session.userId(), source.id(), filePath, language, s3Key,
-                contentHash, content.getBytes(StandardCharsets.UTF_8).length);
+            file = codingProjectRepo.upsertFile(
+                    project.id(), dbId, session.userId(), source.id(), filePath, language, s3Key,
+                    contentHash, content.getBytes(StandardCharsets.UTF_8).length);
+        } catch (RuntimeException e) {
+            log.warn("Project file indexing failed for project {} path {}", project.id(), filePath, e);
+            sendError(ex, 500, "File uploaded to S3 but indexing failed. Check project_files, sources, and context chunk tables.");
+            return;
+        }
 
         sendJson(ex, 201, Map.of("file", projectFileToMap(file), "source", sourceToMap(source, false)));
     }

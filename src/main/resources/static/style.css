@@ -1628,6 +1628,33 @@ button:disabled { opacity: 0.65; cursor: wait; }
 .ide-upload input {
   display: none;
 }
+.ide-upload.primary {
+  margin: 0 0 10px;
+}
+.ide-github-import,
+.ide-rename-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ide-rename-row {
+  grid-template-columns: 1fr 56px;
+}
+.ide-github-import input,
+.ide-rename-row input {
+  width: 100%;
+  min-width: 0;
+}
+.ide-rename-row button {
+  border: 0;
+  border-radius: 5px;
+  background: #26313d;
+  color: #d7dde7;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
 .ide-file-node,
 .ide-folder-node {
   display: grid;

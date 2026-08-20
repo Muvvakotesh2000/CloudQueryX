@@ -447,7 +447,7 @@
               <div class="ide-window-dots"><span></span><span></span><span></span></div>
               <strong>CloudQueryX</strong>
               <span id="ide-project-title">Cloud Coding Workspace</span>
-              <button onclick="showToast('GitHub OAuth is disabled until the GitHub client id and callback URL are configured.', 'info')">Connect GitHub</button>
+              <button onclick="focusGitHubImport()">Connect GitHub</button>
             </div>
 
             <div class="ide-body">
@@ -461,21 +461,28 @@
               <aside class="ide-explorer">
                 <div class="ide-pane-head">
                   <span>Explorer</span>
-                  <button onclick="createCodeProject()" title="Create project">+</button>
+                  <button onclick="document.getElementById('code-folder-upload').click()" title="Upload folder">+</button>
                 </div>
                 <div class="ide-project-form">
-                  <label>Project</label>
-                  <input type="text" id="code-project-name" placeholder="cloudqueryx-web">
-                  <input type="text" id="code-project-desc" placeholder="Short description">
-                  <button class="ide-action" onclick="createCodeProject()">Create cloud project</button>
+                  <label>Open project</label>
+                  <label class="ide-upload primary">
+                    Upload local folder
+                    <input type="file" id="code-folder-upload" multiple webkitdirectory directory onchange="uploadLocalProjectFiles(this.files)">
+                  </label>
+                  <div class="ide-github-import">
+                    <input type="text" id="code-github-url" placeholder="https://github.com/user/repo">
+                    <button class="ide-action" onclick="createGitHubProject()">Use GitHub repo name</button>
+                  </div>
+                  <label>Edit project name</label>
+                  <div class="ide-rename-row">
+                    <input type="text" id="code-project-name" placeholder="Project name">
+                    <button onclick="renameCodeProject()">Save</button>
+                  </div>
+                  <input type="hidden" id="code-project-desc" value="">
                 </div>
                 <div class="ide-tree-title">Projects</div>
                 <div id="code-project-list" class="ide-tree muted">No project loaded yet.</div>
                 <div class="ide-tree-title">Files</div>
-                <label class="ide-upload">
-                  Upload local folder
-                  <input type="file" id="code-folder-upload" multiple webkitdirectory directory onchange="uploadLocalProjectFiles(this.files)">
-                </label>
                 <div id="code-file-list" class="ide-tree muted">No files indexed yet.</div>
               </aside>
 

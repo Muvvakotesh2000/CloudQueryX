@@ -56,6 +56,28 @@ public class CodingProjectRepository {
         }
     }
 
+    public ProjectRow update(String projectId, String databaseId, String userId, String name, String description) {
+        String sql = """
+                UPDATE coding_projects
+                SET name = ?, description = COALESCE(?, description), updated_at = now()
+                WHERE id = ?::uuid AND database_id = ?::uuid AND owner_user_id = ?::uuid AND status <> 'DELETED'
+                RETURNING id, database_id, owner_user_id, name, description, source_type, github_repo_url, status, created_at, updated_at
+                """;
+        try (Connection conn = db.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, name);
+            ps.setString(2, description);
+            ps.setString(3, projectId);
+            ps.setString(4, databaseId);
+            ps.setString(5, userId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return project(rs);
+            throw new IllegalArgumentException("Coding project not found");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update coding project", e);
+        }
+    }
+
     public List<ProjectRow> list(String databaseId, String userId, int limit) {
         String sql = """
                 SELECT id, database_id, owner_user_id, name, description, source_type, github_repo_url, status, created_at, updated_at

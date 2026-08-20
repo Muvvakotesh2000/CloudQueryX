@@ -748,6 +748,10 @@ function renderCodeProjects(projects) {
   var activeProject = projects.find(function(project) { return project.id === currentCodeProjectId; });
   var title = document.getElementById('ide-project-title');
   if (title) title.textContent = activeProject ? activeProject.name : 'Cloud Coding Workspace';
+  var renameInput = document.getElementById('code-project-name');
+  if (renameInput) renameInput.value = activeProject ? activeProject.name : '';
+  var descInput = document.getElementById('code-project-desc');
+  if (descInput) descInput.value = activeProject ? (activeProject.description || '') : '';
   box.innerHTML = projects.map(function(project) {
     var active = project.id === currentCodeProjectId ? ' active' : '';
     return '<button class="code-list-item' + active + '" onclick="selectCodeProject(\'' + esc(project.id) + '\')">' +
@@ -763,28 +767,77 @@ function selectCodeProject(projectId) {
   loadCodeFiles();
 }
 
-async function createCodeProject() {
+async function createCodeProject(nameOverride, descOverride, sourceTypeOverride, githubRepoUrl) {
   var ready = await ensureDemoSession();
   if (!ready) return;
-  var name = document.getElementById('code-project-name').value.trim();
-  var desc = document.getElementById('code-project-desc').value.trim();
+  var name = (nameOverride || document.getElementById('code-project-name').value || '').trim();
+  var desc = descOverride != null ? descOverride : (document.getElementById('code-project-desc').value || '').trim();
+  if (!name) {
+    showToast('Project name required', 'error');
+    return null;
+  }
+  var res = await api('/api/code/projects', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, description: desc, sourceType: sourceTypeOverride || 'upload', githubRepoUrl: githubRepoUrl || null })
+  });
+  if (res.error) {
+    showToast(res.error, 'error');
+    return null;
+  }
+  currentCodeProjectId = res.id;
+  document.getElementById('code-project-name').value = res.name || name;
+  document.getElementById('code-project-desc').value = res.description || desc || '';
+  showToast('Cloud code project created');
+  await loadCodeProjects();
+  return res;
+}
+
+async function renameCodeProject() {
+  var ready = await ensureDemoSession();
+  if (!ready) return;
+  if (!currentCodeProjectId) {
+    showToast('Upload a folder or create a GitHub project first', 'error');
+    return;
+  }
+  var name = (document.getElementById('code-project-name').value || '').trim();
+  var desc = (document.getElementById('code-project-desc').value || '').trim();
   if (!name) {
     showToast('Project name required', 'error');
     return;
   }
-  var res = await api('/api/code/projects', {
-    method: 'POST',
-    body: JSON.stringify({ name: name, description: desc, sourceType: 'upload' })
+  var res = await api('/api/code/projects/' + currentCodeProjectId, {
+    method: 'PUT',
+    body: JSON.stringify({ name: name, description: desc })
   });
   if (res.error) {
     showToast(res.error, 'error');
     return;
   }
-  currentCodeProjectId = res.id;
-  document.getElementById('code-project-name').value = '';
-  document.getElementById('code-project-desc').value = '';
-  showToast('Cloud code project created');
-  loadCodeProjects();
+  showToast('Project name updated');
+  await loadCodeProjects();
+}
+
+function focusGitHubImport() {
+  var input = document.getElementById('code-github-url');
+  if (input) input.focus();
+  showToast('Paste a GitHub repo URL. Full OAuth import and push require GitHub app credentials.', 'info');
+}
+
+async function createGitHubProject() {
+  var url = (document.getElementById('code-github-url').value || '').trim();
+  var name = repoNameFromGitHubUrl(url);
+  if (!name) {
+    showToast('Paste a valid GitHub repository URL', 'error');
+    return;
+  }
+  await createCodeProject(name, 'GitHub repository: ' + url, 'github', url);
+  showToast('Project created from GitHub repo name. Repo file import needs GitHub OAuth configuration.', 'info');
+}
+
+function repoNameFromGitHubUrl(url) {
+  var value = String(url || '').trim().replace(/\.git$/i, '');
+  var match = value.match(/github\.com[/:]([^/]+)\/([^/#?]+)/i);
+  return match ? match[2] : '';
 }
 
 async function loadCodeFiles() {
@@ -869,17 +922,16 @@ function isSkippableUpload(file) {
 async function uploadLocalProjectFiles(fileList) {
   var ready = await ensureDemoSession();
   if (!ready) return;
-  if (!currentCodeProjectId) {
-    showToast('Create a cloud project before uploading a folder', 'error');
-    return;
-  }
   var files = Array.prototype.slice.call(fileList || []).filter(function(file) { return !isSkippableUpload(file); });
   if (!files.length) {
     showToast('No supported text files found in that upload', 'error');
     return;
   }
+  var folderName = folderNameFromUpload(files) || 'Uploaded Project';
+  var project = await createCodeProject(folderName, 'Uploaded local folder: ' + folderName, 'folder', null);
+  if (!project) return;
   var maxFiles = Math.min(files.length, 80);
-  showToast('Uploading ' + maxFiles + ' project files. Large/binary folders are skipped.', 'info');
+  showToast('Created "' + folderName + '". Uploading ' + maxFiles + ' files.', 'info');
   var saved = 0;
   for (var i = 0; i < maxFiles; i++) {
     var file = files[i];
@@ -900,6 +952,15 @@ async function uploadLocalProjectFiles(fileList) {
   if (input) input.value = '';
   loadCodeFiles();
   if (currentExplorerTab === 'sources') loadSourceTable();
+}
+
+function folderNameFromUpload(files) {
+  for (var i = 0; i < files.length; i++) {
+    var path = files[i].webkitRelativePath || files[i].name || '';
+    var parts = path.replace(/\\/g, '/').split('/').filter(Boolean);
+    if (parts.length > 1) return parts[0];
+  }
+  return '';
 }
 
 async function saveCodeFile() {

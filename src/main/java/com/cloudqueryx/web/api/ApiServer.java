@@ -519,7 +519,7 @@ public class ApiServer {
             }
 
             String[] parts = path.substring((prefix + "/").length()).split("/");
-            if (parts.length < 2) {
+            if (parts.length < 1 || parts[0].isBlank()) {
                 sendError(ex, 404, "Coding project route not found");
                 return;
             }
@@ -528,6 +528,23 @@ public class ApiServer {
             Optional<CodingProjectRepository.ProjectRow> project = codingProjectRepo.get(projectId, dbId, session.userId());
             if (project.isEmpty()) {
                 sendError(ex, 404, "Coding project not found");
+                return;
+            }
+
+            if (parts.length == 1 && "PUT".equals(method)) {
+                Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
+                CodingProjectRepository.ProjectRow updated = codingProjectRepo.update(
+                        projectId,
+                        dbId,
+                        session.userId(),
+                        requiredBodyString(body, "name"),
+                        JsonUtil.getString(body, "description"));
+                sendJson(ex, 200, codingProjectToMap(updated));
+                return;
+            }
+
+            if (parts.length < 2) {
+                sendError(ex, 404, "Coding project route not found");
                 return;
             }
 

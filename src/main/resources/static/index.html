@@ -470,6 +470,7 @@
                     <input type="file" id="code-folder-upload" multiple webkitdirectory directory onchange="uploadLocalProjectFiles(this.files)">
                   </label>
                   <div id="code-upload-status" class="ide-upload-status">Pick a folder to create a cloud project.</div>
+                  <button class="ide-action secondary" onclick="runStorageDiagnostics()">Test S3 access</button>
                   <div class="ide-github-import">
                     <input type="text" id="code-github-url" placeholder="https://github.com/user/repo">
                     <button class="ide-action" onclick="createGitHubProject()">Use GitHub repo name</button>

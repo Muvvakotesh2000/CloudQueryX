@@ -99,6 +99,19 @@ public class S3ProjectFileStorage {
         return deleted;
     }
 
+    public StorageDiagnostic diagnose(String userId) {
+        ensureEnabled();
+        String key = "diagnostics/%s/%s.txt".formatted(userId, java.util.UUID.randomUUID());
+        String content = "cloudqueryx-s3-diagnostic";
+        putText(key, content, "text/plain; charset=utf-8");
+        String readBack = getText(key);
+        s3.deleteObject(DeleteObjectRequest.builder()
+                .bucket(config.s3Bucket())
+                .key(key)
+                .build());
+        return new StorageDiagnostic(key, content.equals(readBack));
+    }
+
     private void ensureEnabled() {
         if (!enabled()) {
             throw new IllegalStateException("AWS_S3_BUCKET is required for cloud project file storage");
@@ -106,4 +119,5 @@ public class S3ProjectFileStorage {
     }
 
     public record PresignedUpload(String uploadUrl, String s3Key, String contentType, String expiresAt) {}
+    public record StorageDiagnostic(String testKey, boolean readBackMatched) {}
 }

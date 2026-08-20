@@ -777,6 +777,22 @@ function setCodeUploadStatus(message, type) {
   el.className = 'ide-upload-status ' + (type || '');
 }
 
+async function runStorageDiagnostics() {
+  var ready = await ensureDemoSession();
+  if (!ready) return;
+  setCodeUploadStatus('Testing S3 access from the backend...', 'info');
+  var res = await api('/api/storage/diagnostics');
+  if (res.status === 'OK') {
+    setCodeUploadStatus('S3 access passed: Put/Get/Delete worked for bucket "' + (res.bucket || '') + '" in ' + (res.region || 'unknown region') + '.', 'success');
+    showToast('S3 backend access is working.');
+    return;
+  }
+  var detail = res.error || res.status || 'Unknown S3 diagnostic failure';
+  if (res.errorType) detail = res.errorType + ': ' + detail;
+  setCodeUploadStatus('S3 diagnostic failed: ' + detail, 'error');
+  showToast('S3 diagnostic failed: ' + detail, 'error');
+}
+
 async function createCodeProject(nameOverride, descOverride, sourceTypeOverride, githubRepoUrl) {
   var ready = await ensureDemoSession();
   if (!ready) return;

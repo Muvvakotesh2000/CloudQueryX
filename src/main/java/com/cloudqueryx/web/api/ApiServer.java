@@ -196,6 +196,7 @@ public class ApiServer {
         server.createContext("/api/auth/logout", ex -> wrap(ex, this::handleLogout));
         server.createContext("/api/auth/me", ex -> wrap(ex, this::handleMe));
         server.createContext("/api/config/public", ex -> wrap(ex, this::handlePublicConfig));
+        server.createContext("/api/storage/diagnostics", ex -> wrap(ex, this::handleStorageDiagnostics));
         server.createContext("/api/databases", ex -> wrap(ex, this::handleDatabases));
         server.createContext("/api/code/projects", ex -> wrap(ex, this::handleCodingProjects));
         server.createContext("/api/sources", ex -> wrap(ex, this::handleSources));
@@ -301,6 +302,34 @@ public class ApiServer {
                 && config.supabaseJwtSecret() != null);
         response.put("s3FileStorageEnabled", config.s3Enabled());
         sendJson(ex, 200, response);
+    }
+    private void handleStorageDiagnostics(HttpExchange ex) throws IOException {
+        if (!requireMethod(ex, "GET")) return;
+        SessionRepository.SessionRow session = requireAuth(ex);
+        if (session == null) return;
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("enabled", config.s3Enabled());
+        response.put("bucketConfigured", config.s3Bucket() != null && !config.s3Bucket().isBlank());
+        response.put("bucket", config.s3Bucket());
+        response.put("region", config.awsRegion());
+        try {
+            S3ProjectFileStorage.StorageDiagnostic diagnostic = projectFileStorage.diagnose(session.userId());
+            response.put("status", "OK");
+            response.put("putObject", true);
+            response.put("getObject", diagnostic.readBackMatched());
+            response.put("deleteObject", true);
+            response.put("testKey", diagnostic.testKey());
+            sendJson(ex, 200, response);
+        } catch (IllegalStateException e) {
+            response.put("status", "NOT_CONFIGURED");
+            response.put("error", e.getMessage());
+            sendJson(ex, 503, response);
+        } catch (SdkException e) {
+            response.put("status", "FAILED");
+            response.put("errorType", e.getClass().getSimpleName());
+            response.put("error", e.getMessage());
+            sendJson(ex, 503, response);
+        }
     }
 
     // ─── Auth ──────────────────────────────────────────────────────────
@@ -1899,3 +1928,4 @@ public class ApiServer {
     public SessionRepository getSessionRepo() { return sessionRepo; }
     public DatabaseRepository getDatabaseRepo() { return databaseRepo; }
 }
+

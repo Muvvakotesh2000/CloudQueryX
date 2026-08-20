@@ -1605,6 +1605,12 @@ button:disabled { opacity: 0.65; cursor: wait; }
   width: 100%;
   height: 34px;
 }
+.ide-action.secondary {
+  margin: -4px 0 12px;
+  border: 1px solid #344153;
+  background: #18212d;
+  color: #d8e3ef;
+}
 .ide-tree-title {
   margin: 14px 12px 6px;
 }

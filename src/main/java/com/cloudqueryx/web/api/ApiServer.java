@@ -7,6 +7,8 @@ import com.cloudqueryx.context.runtime.*;
 import com.cloudqueryx.embedding.*;
 import com.cloudqueryx.llm.OpenAiChatService;
 import com.cloudqueryx.repository.*;
+import com.cloudqueryx.storage.S3ProjectFileStorage;
+import com.cloudqueryx.web.auth.SupabaseJwtValidator;
 import com.cloudqueryx.webhook.WebhookDispatcher;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -17,6 +19,8 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -34,6 +38,7 @@ public class ApiServer {
     private SessionRepository sessionRepo;
     private DatabaseRepository databaseRepo;
     private DatabaseApiKeyRepository apiKeyRepo;
+    private CodingProjectRepository codingProjectRepo;
     private VectorRepository vectorRepo;
     private MemoryRepository memoryRepo;
     private GraphRepository graphRepo;
@@ -44,6 +49,8 @@ public class ApiServer {
     private ContextRetrievalService contextRetrievalService;
     private ContextBundleService contextBundleService;
     private OpenAiChatService openAiChatService;
+    private S3ProjectFileStorage projectFileStorage;
+    private SupabaseJwtValidator supabaseJwtValidator;
     private volatile boolean schemaMigrationStarted;
     private volatile boolean backendReady;
     private volatile Throwable startupError;
@@ -77,6 +84,7 @@ public class ApiServer {
         this.sessionRepo = new SessionRepository(databaseConfig, sessionTimeout);
         this.databaseRepo = new DatabaseRepository(databaseConfig);
         this.apiKeyRepo = new DatabaseApiKeyRepository(databaseConfig);
+        this.codingProjectRepo = new CodingProjectRepository(databaseConfig);
         this.vectorRepo = new VectorRepository(databaseConfig);
         this.memoryRepo = new MemoryRepository(databaseConfig);
         this.graphRepo = new GraphRepository(databaseConfig);
@@ -95,6 +103,8 @@ public class ApiServer {
                 new TokenBudgetOptimizer(tokenEstimator, new ExtractiveContextCompressor(tokenEstimator)),
                 new ContextFormatterService());
         this.openAiChatService = new OpenAiChatService(config);
+        this.projectFileStorage = new S3ProjectFileStorage(config);
+        this.supabaseJwtValidator = new SupabaseJwtValidator(config);
         this.backendReady = true;
         this.startupError = null;
         log.info("Backend services initialized");
@@ -184,7 +194,9 @@ public class ApiServer {
         server.createContext("/api/auth/login", ex -> wrap(ex, this::handleLogin));
         server.createContext("/api/auth/logout", ex -> wrap(ex, this::handleLogout));
         server.createContext("/api/auth/me", ex -> wrap(ex, this::handleMe));
+        server.createContext("/api/config/public", ex -> wrap(ex, this::handlePublicConfig));
         server.createContext("/api/databases", ex -> wrap(ex, this::handleDatabases));
+        server.createContext("/api/code/projects", ex -> wrap(ex, this::handleCodingProjects));
         server.createContext("/api/sources", ex -> wrap(ex, this::handleSources));
         server.createContext("/api/context/retrieve", ex -> wrap(ex, this::handleContextRetrieve));
         server.createContext("/api/context/build", ex -> wrap(ex, this::handleContextBuild));
@@ -276,6 +288,18 @@ public class ApiServer {
             sendJson(ex, 503, Map.of("status", "unhealthy", "database", "disconnected",
                     "error", e.getMessage()));
         }
+    }
+
+    private void handlePublicConfig(HttpExchange ex) throws IOException {
+        if (!requireMethod(ex, "GET")) return;
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("supabaseUrl", config.supabaseUrl());
+        response.put("supabaseAnonKey", config.supabaseAnonKey());
+        response.put("supabaseAuthEnabled", config.supabaseUrl() != null
+                && config.supabaseAnonKey() != null
+                && config.supabaseJwtSecret() != null);
+        response.put("s3FileStorageEnabled", config.s3Enabled());
+        sendJson(ex, 200, response);
     }
 
     // ─── Auth ──────────────────────────────────────────────────────────
@@ -447,6 +471,175 @@ public class ApiServer {
     }
 
     // ─── Unified Context API ───────────────────────────────────────────
+
+    private void handleCodingProjects(HttpExchange ex) throws IOException {
+        SessionRepository.SessionRow session = requireAuth(ex);
+        if (session == null) return;
+        String dbId = requireDatabaseId(ex, session);
+        if (dbId == null) return;
+
+        String method = ex.getRequestMethod();
+        String path = ex.getRequestURI().getPath();
+        String prefix = "/api/code/projects";
+
+        try {
+            if ("GET".equals(method) && prefix.equals(path)) {
+                List<Map<String, Object>> projects = codingProjectRepo.list(dbId, session.userId(), 100).stream()
+                        .map(this::codingProjectToMap)
+                        .toList();
+                sendJson(ex, 200, Map.of("projects", projects, "count", projects.size()));
+                return;
+            }
+
+            if ("POST".equals(method) && prefix.equals(path)) {
+                Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
+                CodingProjectRepository.ProjectRow project = codingProjectRepo.create(
+                        dbId,
+                        session.userId(),
+                        requiredBodyString(body, "name"),
+                        JsonUtil.getString(body, "description"),
+                        Objects.requireNonNullElse(JsonUtil.getString(body, "sourceType"), "upload"),
+                        JsonUtil.getString(body, "githubRepoUrl"));
+                sendJson(ex, 201, codingProjectToMap(project));
+                return;
+            }
+
+            if (!path.startsWith(prefix + "/")) {
+                sendError(ex, 404, "Coding project route not found");
+                return;
+            }
+
+            String[] parts = path.substring((prefix + "/").length()).split("/");
+            if (parts.length < 2) {
+                sendError(ex, 404, "Coding project route not found");
+                return;
+            }
+
+            String projectId = parts[0];
+            Optional<CodingProjectRepository.ProjectRow> project = codingProjectRepo.get(projectId, dbId, session.userId());
+            if (project.isEmpty()) {
+                sendError(ex, 404, "Coding project not found");
+                return;
+            }
+
+            if ("files".equals(parts[1])) {
+                handleProjectFiles(ex, session, dbId, project.get());
+                return;
+            }
+
+            if ("ask".equals(parts[1]) && "POST".equals(method)) {
+                handleCodingAsk(ex, session, dbId, project.get());
+                return;
+            }
+
+            sendError(ex, 405, "Method not allowed");
+        } catch (IllegalArgumentException e) {
+            sendError(ex, 400, e.getMessage());
+        } catch (IllegalStateException e) {
+            sendError(ex, 503, e.getMessage());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            sendError(ex, 504, "OpenAI request interrupted");
+        }
+    }
+
+    private void handleProjectFiles(HttpExchange ex, SessionRepository.SessionRow session, String dbId,
+                                    CodingProjectRepository.ProjectRow project)
+            throws IOException {
+        if ("GET".equals(ex.getRequestMethod())) {
+            List<Map<String, Object>> files = codingProjectRepo.listFiles(project.id(), dbId, session.userId()).stream()
+                    .map(this::projectFileToMap)
+                    .toList();
+            sendJson(ex, 200, Map.of("files", files, "count", files.size()));
+            return;
+        }
+
+        if (!"POST".equals(ex.getRequestMethod())) {
+            sendError(ex, 405, "Method not allowed");
+            return;
+        }
+
+        Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
+        String filePath = CodingProjectRepository.normalizePath(requiredBodyString(body, "path"));
+        String content = requiredBodyString(body, "content");
+        String language = Objects.requireNonNullElse(JsonUtil.getString(body, "language"), inferLanguage(filePath));
+        String contentHash = sha256(content);
+        int nextVersion = codingProjectRepo.listFiles(project.id(), dbId, session.userId()).stream()
+                .filter(f -> f.path().equals(filePath))
+                .mapToInt(CodingProjectRepository.FileRow::version)
+                .max()
+                .orElse(0) + 1;
+        String s3Key = projectFileStorage.keyFor(session.userId(), project.id(), nextVersion, filePath);
+        projectFileStorage.putText(s3Key, content, contentTypeFor(language));
+
+        SourceRepository.SourceRow source = sourceService.create(
+                dbId,
+                session.userId(),
+                sourceTypeForLanguage(language),
+                filePath,
+                content,
+                Map.of(
+                        "origin", "coding-assistant",
+                        "projectId", project.id(),
+                        "path", filePath,
+                        "language", language,
+                        "s3Key", s3Key));
+
+        CodingProjectRepository.FileRow file = codingProjectRepo.upsertFile(
+                project.id(), dbId, session.userId(), source.id(), filePath, language, s3Key,
+                contentHash, content.getBytes(StandardCharsets.UTF_8).length);
+
+        sendJson(ex, 201, Map.of("file", projectFileToMap(file), "source", sourceToMap(source, false)));
+    }
+
+    private void handleCodingAsk(HttpExchange ex, SessionRepository.SessionRow session, String dbId,
+                                 CodingProjectRepository.ProjectRow project)
+            throws IOException, InterruptedException {
+        Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
+        String task = requiredBodyString(body, "task");
+        List<CodingProjectRepository.FileRow> files = codingProjectRepo.listFiles(project.id(), dbId, session.userId());
+        String fileList = files.stream()
+                .limit(80)
+                .map(f -> "- " + f.path() + " (" + f.language() + ", v" + f.version() + ")")
+                .reduce("", (a, b) -> a + b + "\n");
+        String message = """
+                CODING_ASSISTANT_TASK:
+                %s
+
+                CLOUD_PROJECT:
+                %s
+
+                FILES_AVAILABLE:
+                %s
+
+                Answer as a transparent coding assistant. Explain which files matter, what you would change,
+                risks, verification steps, and only propose patches when enough context is present.
+                """.formatted(task, project.name(), fileList);
+
+        ContextBundleService.BundleBuildResult bundle = contextBundleService.build(
+                dbId,
+                session.userId(),
+                message,
+                "medium-context-model",
+                JsonUtil.getInt(body, "tokenBudget", 12000),
+                "coding",
+                true,
+                List.of("code", "config", "log", "markdown", "document", "note"),
+                true,
+                true,
+                true,
+                true);
+
+        OpenAiChatService.ChatResult chat = openAiChatService.chat(message, bundle);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("answer", chat.answer());
+        response.put("model", chat.model());
+        response.put("usedContext", chat.usedContext());
+        response.put("memorySuggestions", chat.memorySuggestions());
+        response.put("contextBundle", bundleToMap(bundle));
+        response.put("project", codingProjectToMap(project));
+        sendJson(ex, 200, response);
+    }
 
     // Context Runtime: Sources and Bundles
 
@@ -1328,6 +1521,86 @@ public class ApiServer {
         return map;
     }
 
+    private Map<String, Object> codingProjectToMap(CodingProjectRepository.ProjectRow project) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", project.id());
+        map.put("databaseId", project.databaseId());
+        map.put("name", project.name());
+        map.put("description", project.description());
+        map.put("sourceType", project.sourceType());
+        map.put("githubRepoUrl", project.githubRepoUrl());
+        map.put("status", project.status());
+        map.put("createdAt", project.createdAt().toString());
+        map.put("updatedAt", project.updatedAt().toString());
+        return map;
+    }
+
+    private Map<String, Object> projectFileToMap(CodingProjectRepository.FileRow file) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", file.id());
+        map.put("projectId", file.projectId());
+        map.put("sourceId", file.sourceId());
+        map.put("path", file.path());
+        map.put("language", file.language());
+        map.put("contentHash", file.contentHash());
+        map.put("sizeBytes", file.sizeBytes());
+        map.put("version", file.version());
+        map.put("status", file.status());
+        map.put("createdAt", file.createdAt().toString());
+        map.put("updatedAt", file.updatedAt().toString());
+        return map;
+    }
+
+    private String inferLanguage(String path) {
+        String value = path.toLowerCase(Locale.ROOT);
+        if (value.endsWith(".java")) return "java";
+        if (value.endsWith(".js") || value.endsWith(".jsx")) return "javascript";
+        if (value.endsWith(".ts") || value.endsWith(".tsx")) return "typescript";
+        if (value.endsWith(".py")) return "python";
+        if (value.endsWith(".sql")) return "sql";
+        if (value.endsWith(".json")) return "json";
+        if (value.endsWith(".yml") || value.endsWith(".yaml")) return "yaml";
+        if (value.endsWith(".md")) return "markdown";
+        if (value.endsWith(".html")) return "html";
+        if (value.endsWith(".css")) return "css";
+        if (value.endsWith(".log")) return "log";
+        if (value.contains("dockerfile")) return "docker";
+        if (value.endsWith(".env") || value.contains("config")) return "config";
+        return "text";
+    }
+
+    private String sourceTypeForLanguage(String language) {
+        String value = language != null ? language.toLowerCase(Locale.ROOT) : "text";
+        if (List.of("java", "javascript", "typescript", "python", "sql", "html", "css", "docker").contains(value)) {
+            return "code";
+        }
+        if ("log".equals(value)) return "log";
+        if ("markdown".equals(value)) return "markdown";
+        if ("json".equals(value) || "yaml".equals(value) || "config".equals(value)) return "config";
+        return "document";
+    }
+
+    private String contentTypeFor(String language) {
+        String value = language != null ? language.toLowerCase(Locale.ROOT) : "text";
+        if ("json".equals(value)) return "application/json; charset=utf-8";
+        if ("html".equals(value)) return "text/html; charset=utf-8";
+        if ("css".equals(value)) return "text/css; charset=utf-8";
+        if ("markdown".equals(value)) return "text/markdown; charset=utf-8";
+        return "text/plain; charset=utf-8";
+    }
+
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest((value != null ? value : "").getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
     private Map<String, Object> retrievalToMap(RetrievalResult result) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("type", result.type());
@@ -1388,11 +1661,21 @@ public class ApiServer {
     private SessionRepository.SessionRow requireAuth(HttpExchange ex) throws IOException {
         String token = getToken(ex);
         Optional<SessionRepository.SessionRow> session = sessionRepo.validate(token);
-        if (session.isEmpty()) {
-            sendError(ex, 401, "Authentication required");
-            return null;
+        if (session.isPresent()) {
+            return session.get();
         }
-        return session.get();
+        Optional<SupabaseJwtValidator.SupabaseUser> supabaseUser = supabaseJwtValidator.validate(token);
+        if (supabaseUser.isPresent()) {
+            UserRepository.UserRow user = userRepo.upsertExternalUser(
+                    supabaseUser.get().id(),
+                    supabaseUser.get().email());
+            return new SessionRepository.SessionRow(
+                    user.id(),
+                    user.email(),
+                    Instant.now().plus(Duration.ofHours(config.sessionTimeoutHours())));
+        }
+        sendError(ex, 401, "Authentication required");
+        return null;
     }
 
     private DatabaseApiKeyRepository.ApiKeyAuth requireApiKey(HttpExchange ex) throws IOException {

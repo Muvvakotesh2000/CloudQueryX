@@ -16,6 +16,7 @@
     <div class="nav-container">
       <a href="/" class="logo-mark">CloudQueryX</a>
       <div class="nav-actions">
+        <button class="btn-text" onclick="showAuth('login')">Sign in</button>
         <button class="btn-primary-sm" onclick="startDemo()">Start free playground</button>
       </div>
     </div>
@@ -278,6 +279,11 @@
           Home
         </a>
 
+        <a class="sidebar-item" data-section="code">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 4L2 8l3.5 4M10.5 4L14 8l-3.5 4"/></svg>
+          Code
+        </a>
+
         <a class="sidebar-item" data-section="explorer">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="5" cy="4" r="0.5" fill="currentColor"/><circle cx="5" cy="8" r="0.5" fill="currentColor"/><circle cx="5" cy="12" r="0.5" fill="currentColor"/></svg>
           Data
@@ -434,6 +440,51 @@
           </div>
         </div>
 
+        <!-- ── CODE WORKSPACE ───────────────────────────────── -->
+        <div id="section-code" class="section">
+          <div class="section-page code-page">
+            <div class="section-header-row">
+              <div>
+                <h2>Cloud Coding Assistant</h2>
+                <p>Upload project files, let CloudQueryX index the code, then ask coding questions with visible context.</p>
+              </div>
+              <button class="btn-sm" onclick="showToast('GitHub connect, commit, and push are the next production slice.', 'info')">GitHub coming next</button>
+            </div>
+
+            <div class="code-workspace">
+              <div class="code-panel">
+                <h3>Project</h3>
+                <p class="muted">Create a cloud project. Files are stored in S3 when configured and indexed as CloudQueryX sources.</p>
+                <label>Project name</label>
+                <input type="text" id="code-project-name" placeholder="cloudqueryx-web">
+                <label>Description</label>
+                <input type="text" id="code-project-desc" placeholder="What this codebase does">
+                <button class="btn-primary full" onclick="createCodeProject()">Create project</button>
+                <div id="code-project-list" class="code-list muted">No project loaded yet.</div>
+              </div>
+
+              <div class="code-panel code-file-panel">
+                <h3>Files</h3>
+                <p class="muted">Paste a file for the MVP. Bulk folder upload and GitHub import come next.</p>
+                <label>File path</label>
+                <input type="text" id="code-file-path" placeholder="src/main/java/App.java">
+                <label>Content</label>
+                <textarea id="code-file-content" rows="12" placeholder="Paste code, config, logs, or docs..."></textarea>
+                <button class="btn-primary full" onclick="saveCodeFile()">Save and index file</button>
+                <div id="code-file-list" class="code-list muted">No files indexed yet.</div>
+              </div>
+
+              <div class="code-panel code-assistant-panel">
+                <h3>Ask the coding assistant</h3>
+                <p class="muted">CloudQueryX retrieves relevant files/chunks first, then the LLM explains the plan, risks, and verification.</p>
+                <textarea id="code-task" rows="5" placeholder="Example: Find why login fails after deployment and explain which files matter."></textarea>
+                <button class="btn-primary full" onclick="askCodeAssistant()">Ask with code context</button>
+                <div id="code-answer" class="code-answer muted">Upload files, then ask a coding question.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ── DATA EXPLORER ────────────────────────────────── -->
         <div id="section-explorer" class="section">
           <div class="section-page">
@@ -574,6 +625,34 @@
      ═══════════════════════════════════════════════════════════════ -->
 <div id="action-modal" class="modal-overlay" style="display:none">
   <div class="modal-card" id="action-modal-content"></div>
+</div>
+
+<div id="auth-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card auth-card">
+    <button class="modal-close" onclick="closeAuth()">&times;</button>
+    <h2 id="auth-title">Log in to CloudQueryX</h2>
+    <p id="auth-subtitle" class="muted">Access your cloud coding workspace</p>
+    <div class="auth-tabs">
+      <button id="tab-login" class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+      <button id="tab-signup" class="auth-tab" onclick="switchAuthTab('signup')">Create account</button>
+    </div>
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <label>Email</label>
+      <input type="email" id="login-email" autocomplete="email" required>
+      <label>Password</label>
+      <input type="password" id="login-password" autocomplete="current-password" required>
+      <button class="btn-primary full" data-auth-button="login">Login</button>
+      <div id="login-message" class="form-result"></div>
+    </form>
+    <form id="signup-form" onsubmit="handleSignup(event)" style="display:none">
+      <label>Email</label>
+      <input type="email" id="signup-email" autocomplete="email" required>
+      <label>Password</label>
+      <input type="password" id="signup-password" autocomplete="new-password" required minlength="8">
+      <button class="btn-primary full" data-auth-button="signup">Create account</button>
+      <div id="signup-message" class="form-result"></div>
+    </form>
+  </div>
 </div>
 
 <!-- Toast container -->

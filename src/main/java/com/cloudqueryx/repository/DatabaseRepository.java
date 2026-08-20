@@ -104,6 +104,9 @@ public class DatabaseRepository {
 
                 deleteWhereDatabase(conn, "context_bundle_items", dbId);
                 deleteWhereDatabase(conn, "context_bundles", dbId);
+                deleteWhereDatabase(conn, "project_file_versions", dbId);
+                deleteWhereDatabase(conn, "project_files", dbId);
+                deleteWhereDatabase(conn, "coding_projects", dbId);
                 deleteWhereDatabase(conn, "context_embeddings", dbId);
                 deleteWhereDatabase(conn, "context_chunks", dbId);
                 deleteWhereDatabase(conn, "sources", dbId);

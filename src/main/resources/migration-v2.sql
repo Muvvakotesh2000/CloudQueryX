@@ -181,3 +181,56 @@ CREATE TABLE IF NOT EXISTS context_bundle_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bundle_items_bundle ON context_bundle_items (database_id, bundle_id);
+
+-- Cloud coding workspace: projects and S3-backed files
+CREATE TABLE IF NOT EXISTS coding_projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    database_id UUID REFERENCES databases(id) ON DELETE CASCADE,
+    owner_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    source_type TEXT DEFAULT 'upload',
+    github_repo_url TEXT,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_coding_projects_owner ON coding_projects (owner_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_coding_projects_database ON coding_projects (database_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS project_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES coding_projects(id) ON DELETE CASCADE,
+    database_id UUID REFERENCES databases(id) ON DELETE CASCADE,
+    owner_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    source_id TEXT,
+    path TEXT NOT NULL,
+    language TEXT DEFAULT 'text',
+    s3_key TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    size_bytes BIGINT DEFAULT 0,
+    version INT DEFAULT 1,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (project_id, path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_files_project ON project_files (project_id, path);
+CREATE INDEX IF NOT EXISTS idx_project_files_owner ON project_files (owner_user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_project_files_source ON project_files (database_id, source_id);
+
+CREATE TABLE IF NOT EXISTS project_file_versions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    file_id UUID REFERENCES project_files(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES coding_projects(id) ON DELETE CASCADE,
+    database_id UUID REFERENCES databases(id) ON DELETE CASCADE,
+    owner_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    s3_key TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    version INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_file_versions_file ON project_file_versions (file_id, version DESC);

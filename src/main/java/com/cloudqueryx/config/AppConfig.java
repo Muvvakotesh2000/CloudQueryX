@@ -127,4 +127,14 @@ public final class AppConfig {
     }
     public int llmTimeoutSeconds() { return getInt("CLOUDQUERYX_LLM_TIMEOUT_SECONDS", 45); }
     public int chatTokenBudget() { return getInt("CLOUDQUERYX_CHAT_TOKEN_BUDGET", 8000); }
+
+    // Supabase Auth config
+    public String supabaseUrl() { return get("SUPABASE_URL"); }
+    public String supabaseAnonKey() { return get("SUPABASE_ANON_KEY"); }
+    public String supabaseJwtSecret() { return get("SUPABASE_JWT_SECRET"); }
+
+    // Cloud project file storage
+    public String awsRegion() { return get("AWS_REGION", "us-east-1"); }
+    public String s3Bucket() { return get("AWS_S3_BUCKET"); }
+    public boolean s3Enabled() { return s3Bucket() != null && !s3Bucket().isBlank(); }
 }

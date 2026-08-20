@@ -5,12 +5,14 @@ var token = sessionStorage.getItem('cqx_demo_token');
 var currentDbId = null;
 var currentSection = 'playground';
 var currentExplorerTab = 'memories';
+var currentCodeProjectId = null;
 var chatMemorySuggestions = [];
 var lastAutoSavedContext = [];
 var forceGraph = null;
 var demoMode = sessionStorage.getItem('cqx_demo_mode') === '1';
 var demoMessageCount = Number(sessionStorage.getItem('cqx_demo_messages') || '0');
 var DEMO_MESSAGE_LIMIT = 20;
+var publicConfig = {};
 
 var API = '';
 function api(path, opts) {
@@ -166,10 +168,10 @@ function switchAuthTab(tab) {
 }
 
 function setAuthMessage(mode, message, type) {
-  var el = document.getElementById(mode + '-error');
+  var el = document.getElementById(mode + '-message') || document.getElementById(mode + '-error');
   if (!el) return;
   el.textContent = message || '';
-  el.className = 'form-error ' + (type || '');
+  el.className = 'form-result ' + (type || '');
 }
 
 function setAuthBusy(mode, busy) {
@@ -188,7 +190,7 @@ function handleSignup(e) {
   var password = document.getElementById('signup-password').value;
   setAuthMessage('signup', 'Creating your account...', 'info');
   setAuthBusy('signup', true);
-  api('/api/auth/signup', { method: 'POST', body: JSON.stringify({ email: email, password: password }) })
+  authRequest('signup', email, password)
     .then(function(res) {
       setAuthBusy('signup', false);
       if (res.error) {
@@ -210,7 +212,7 @@ function handleLogin(e) {
   var password = document.getElementById('login-password').value;
   setAuthMessage('login', 'Checking your account...', 'info');
   setAuthBusy('login', true);
-  api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: email, password: password }) })
+  authRequest('login', email, password)
     .then(function(res) {
       setAuthBusy('login', false);
       if (res.error) {
@@ -224,6 +226,47 @@ function handleLogin(e) {
       setTimeout(function() { closeAuth(); showApp(res.user, res.defaultDatabase); }, 300);
     });
   return false;
+}
+
+async function loadPublicConfig() {
+  var res = await api('/api/config/public');
+  if (!res.error) publicConfig = res;
+}
+
+async function authRequest(mode, email, password) {
+  if (publicConfig.supabaseAuthEnabled && publicConfig.supabaseUrl && publicConfig.supabaseAnonKey) {
+    var endpoint = mode === 'signup'
+      ? '/auth/v1/signup'
+      : '/auth/v1/token?grant_type=password';
+    var supabaseRes = await fetch(publicConfig.supabaseUrl.replace(/\/$/, '') + endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': publicConfig.supabaseAnonKey,
+        'Authorization': 'Bearer ' + publicConfig.supabaseAnonKey
+      },
+      body: JSON.stringify({ email: email, password: password })
+    }).then(function(r) {
+      return r.text().then(function(text) {
+        var data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: text }; }
+        if (!r.ok && !data.error) data.error = data.msg || ('Supabase auth failed with status ' + r.status);
+        return data;
+      });
+    }).catch(function(e) { return { error: e.message }; });
+    if (supabaseRes.error) return { error: supabaseRes.error_description || supabaseRes.error };
+    if (!supabaseRes.access_token) {
+      return { error: 'Check your email to confirm your account, then log in.' };
+    }
+    token = supabaseRes.access_token;
+    var me = await api('/api/auth/me');
+    if (me.error) return me;
+    return { token: token, user: { id: me.id, email: me.email }, defaultDatabase: me.defaultDatabase };
+  }
+  return api(mode === 'signup' ? '/api/auth/signup' : '/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: email, password: password })
+  });
 }
 
 function logout() {
@@ -293,7 +336,7 @@ function checkHealth() {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════
 function showSection(name) {
-  if (name !== 'playground' && name !== 'explorer') name = 'playground';
+  if (name !== 'playground' && name !== 'code' && name !== 'explorer') name = 'playground';
   currentSection = name;
   document.querySelectorAll('#db-view > .section').forEach(function(s) {
     s.classList.remove('active-section');
@@ -307,6 +350,7 @@ function showSection(name) {
 
   switch (name) {
     case 'overview': loadOverviewData(); break;
+    case 'code': loadCodeProjects(); break;
     case 'explorer': loadExplorerTab(currentExplorerTab); break;
     case 'graph': loadGraphData(); break;
     case 'api-reference': initApiReference(); break;
@@ -660,6 +704,191 @@ function renderTraceDebugger(bundle, query) {
     '<ol class="trace-list">' + steps.map(function(step) {
       return '<li><strong>' + esc(step[0]) + '</strong><p>' + esc(step[1]) + '</p></li>';
     }).join('') + '</ol>';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CODE WORKSPACE
+// ═══════════════════════════════════════════════════════════════
+async function loadCodeProjects() {
+  var ready = await ensureDemoSession();
+  if (!ready) return;
+  var box = document.getElementById('code-project-list');
+  if (!box) return;
+  box.innerHTML = '<p class="muted">Loading projects...</p>';
+  var res = await api('/api/code/projects');
+  if (res.error) {
+    box.innerHTML = '<p class="form-error">' + esc(res.error) + '</p>';
+    return;
+  }
+  var projects = res.projects || [];
+  if (!currentCodeProjectId && projects.length > 0) currentCodeProjectId = projects[0].id;
+  renderCodeProjects(projects);
+  if (currentCodeProjectId) loadCodeFiles();
+}
+
+function renderCodeProjects(projects) {
+  var box = document.getElementById('code-project-list');
+  if (!box) return;
+  if (!projects || projects.length === 0) {
+    box.innerHTML = '<p class="muted">No cloud code projects yet.</p>';
+    return;
+  }
+  box.innerHTML = projects.map(function(project) {
+    var active = project.id === currentCodeProjectId ? ' active' : '';
+    return '<button class="code-list-item' + active + '" onclick="selectCodeProject(\'' + esc(project.id) + '\')">' +
+      '<strong>' + esc(project.name) + '</strong>' +
+      '<span>' + esc(project.description || project.sourceType || 'Cloud project') + '</span>' +
+      '</button>';
+  }).join('');
+}
+
+function selectCodeProject(projectId) {
+  currentCodeProjectId = projectId;
+  loadCodeProjects();
+  loadCodeFiles();
+}
+
+async function createCodeProject() {
+  var ready = await ensureDemoSession();
+  if (!ready) return;
+  var name = document.getElementById('code-project-name').value.trim();
+  var desc = document.getElementById('code-project-desc').value.trim();
+  if (!name) {
+    showToast('Project name required', 'error');
+    return;
+  }
+  var res = await api('/api/code/projects', {
+    method: 'POST',
+    body: JSON.stringify({ name: name, description: desc, sourceType: 'upload' })
+  });
+  if (res.error) {
+    showToast(res.error, 'error');
+    return;
+  }
+  currentCodeProjectId = res.id;
+  document.getElementById('code-project-name').value = '';
+  document.getElementById('code-project-desc').value = '';
+  showToast('Cloud code project created');
+  loadCodeProjects();
+}
+
+async function loadCodeFiles() {
+  var box = document.getElementById('code-file-list');
+  if (!box || !currentCodeProjectId) return;
+  box.innerHTML = '<p class="muted">Loading files...</p>';
+  var res = await api('/api/code/projects/' + currentCodeProjectId + '/files');
+  if (res.error) {
+    box.innerHTML = '<p class="form-error">' + esc(res.error) + '</p>';
+    return;
+  }
+  var files = res.files || [];
+  if (files.length === 0) {
+    box.innerHTML = '<p class="muted">No files indexed yet.</p>';
+    return;
+  }
+  box.innerHTML = files.map(function(file) {
+    return '<div class="code-file-row">' +
+      '<strong>' + esc(file.path) + '</strong>' +
+      '<span>' + esc(file.language || 'text') + ' · v' + esc(String(file.version || 1)) + ' · ' + esc(formatBytes(file.sizeBytes || 0)) + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+async function saveCodeFile() {
+  var ready = await ensureDemoSession();
+  if (!ready) return;
+  if (!currentCodeProjectId) {
+    showToast('Create a code project first', 'error');
+    return;
+  }
+  var path = document.getElementById('code-file-path').value.trim();
+  var content = document.getElementById('code-file-content').value;
+  if (!path || !content.trim()) {
+    showToast('File path and content are required', 'error');
+    return;
+  }
+  showToast('Saving file to cloud storage and indexing source...', 'info');
+  var res = await api('/api/code/projects/' + currentCodeProjectId + '/files', {
+    method: 'POST',
+    body: JSON.stringify({ path: path, content: content, language: inferCodeLanguage(path) })
+  });
+  if (res.error) {
+    showToast(res.error, 'error');
+    return;
+  }
+  document.getElementById('code-file-content').value = '';
+  showToast('File saved and indexed');
+  loadCodeFiles();
+  if (currentExplorerTab === 'sources') loadSourceTable();
+}
+
+async function askCodeAssistant() {
+  var ready = await ensureDemoSession();
+  if (!ready) return;
+  if (!currentCodeProjectId) {
+    showToast('Create a code project first', 'error');
+    return;
+  }
+  var task = document.getElementById('code-task').value.trim();
+  var answer = document.getElementById('code-answer');
+  if (!task) {
+    showToast('Coding task required', 'error');
+    return;
+  }
+  answer.innerHTML = '<p class="muted">Retrieving code context and building a bundle...</p>';
+  var res = await api('/api/code/projects/' + currentCodeProjectId + '/ask', {
+    method: 'POST',
+    body: JSON.stringify({ task: task, tokenBudget: 12000 })
+  });
+  if (res.error) {
+    answer.innerHTML = '<p class="form-error">' + esc(res.error) + '</p>';
+    return;
+  }
+  renderCodeAnswer(res, task);
+  chatMemorySuggestions = normalizeMemorySuggestions(res.memorySuggestions || []);
+  await autoStoreAssistantSuggestions();
+}
+
+function renderCodeAnswer(res, task) {
+  var answer = document.getElementById('code-answer');
+  var bundle = res.contextBundle || {};
+  var items = bundle.items || [];
+  answer.innerHTML =
+    '<div class="code-answer-block">' +
+      '<h4>Answer</h4>' +
+      '<p>' + formatAssistantText(res.answer || 'No answer returned.') + '</p>' +
+    '</div>' +
+    '<div class="code-answer-block">' +
+      '<h4>Context used</h4>' +
+      '<div class="bundle-summary"><span>' + items.length + ' items</span><span>' + (bundle.estimatedTokens || 0) + ' tokens</span><span>' + esc(bundle.freshnessStatus || 'VALID') + '</span></div>' +
+      (items.length ? items.slice(0, 8).map(function(item) {
+        return '<div class="context-chip light"><strong>' + esc(item.type || item.itemType || 'CONTEXT') + '</strong>' +
+          '<p>' + esc(previewText(item.content || '', 240)) + '</p><small>' + esc(item.reason || '') + '</small></div>';
+      }).join('') : '<p class="muted">No indexed code context matched this task.</p>') +
+    '</div>';
+}
+
+function inferCodeLanguage(path) {
+  var lower = String(path || '').toLowerCase();
+  if (lower.endsWith('.java')) return 'java';
+  if (lower.endsWith('.js') || lower.endsWith('.jsx')) return 'javascript';
+  if (lower.endsWith('.ts') || lower.endsWith('.tsx')) return 'typescript';
+  if (lower.endsWith('.py')) return 'python';
+  if (lower.endsWith('.sql')) return 'sql';
+  if (lower.endsWith('.json')) return 'json';
+  if (lower.endsWith('.yml') || lower.endsWith('.yaml')) return 'yaml';
+  if (lower.endsWith('.md')) return 'markdown';
+  if (lower.endsWith('.html')) return 'html';
+  if (lower.endsWith('.css')) return 'css';
+  if (lower.endsWith('.log')) return 'log';
+  return 'text';
+}
+
+function formatBytes(bytes) {
+  bytes = Number(bytes || 0);
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 function renderMiniFlow(activeLabel) {
@@ -1763,7 +1992,9 @@ function confirmDeleteAllData() {
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  await loadPublicConfig();
+
   document.querySelectorAll('.sidebar-item[data-section]').forEach(function(item) {
     item.addEventListener('click', function(e) {
       e.preventDefault();

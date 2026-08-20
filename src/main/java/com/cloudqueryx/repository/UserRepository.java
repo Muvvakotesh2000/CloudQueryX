@@ -66,6 +66,38 @@ public class UserRepository {
         }
     }
 
+    public UserRow upsertExternalUser(String externalUserId, String email) {
+        String safeEmail = email != null && !email.isBlank()
+                ? email.toLowerCase()
+                : externalUserId + "@supabase.local";
+        String passwordHash = "SUPABASE_AUTH";
+        String sql = """
+                INSERT INTO users (id, email, password_hash)
+                VALUES (?::uuid, ?, ?)
+                ON CONFLICT (id)
+                DO UPDATE SET email = EXCLUDED.email
+                RETURNING id, email, password_hash, created_at
+                """;
+        try (Connection conn = db.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, externalUserId);
+            ps.setString(2, safeEmail);
+            ps.setString(3, passwordHash);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new UserRow(
+                        rs.getString("id"),
+                        rs.getString("email"),
+                        rs.getString("password_hash"),
+                        rs.getTimestamp("created_at").toInstant()
+                );
+            }
+            throw new IllegalStateException("UPSERT RETURNING produced no rows");
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to upsert Supabase user", e);
+        }
+    }
+
     public Optional<UserRow> getById(String id) {
         String sql = "SELECT id, email, password_hash, created_at FROM users WHERE id = ?::uuid";
         try (Connection conn = db.getConnection();

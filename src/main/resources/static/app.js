@@ -731,8 +731,13 @@ function renderCodeProjects(projects) {
   if (!box) return;
   if (!projects || projects.length === 0) {
     box.innerHTML = '<p class="muted">No cloud code projects yet.</p>';
+    var emptyTitle = document.getElementById('ide-project-title');
+    if (emptyTitle) emptyTitle.textContent = 'Cloud Coding Workspace';
     return;
   }
+  var activeProject = projects.find(function(project) { return project.id === currentCodeProjectId; });
+  var title = document.getElementById('ide-project-title');
+  if (title) title.textContent = activeProject ? activeProject.name : 'Cloud Coding Workspace';
   box.innerHTML = projects.map(function(project) {
     var active = project.id === currentCodeProjectId ? ' active' : '';
     return '<button class="code-list-item' + active + '" onclick="selectCodeProject(\'' + esc(project.id) + '\')">' +
@@ -787,11 +792,17 @@ async function loadCodeFiles() {
     return;
   }
   box.innerHTML = files.map(function(file) {
-    return '<div class="code-file-row">' +
+    return '<div class="code-file-row" onclick="focusCodeFilePath(\'' + esc(file.path) + '\')">' +
       '<strong>' + esc(file.path) + '</strong>' +
       '<span>' + esc(file.language || 'text') + ' · v' + esc(String(file.version || 1)) + ' · ' + esc(formatBytes(file.sizeBytes || 0)) + '</span>' +
       '</div>';
   }).join('');
+}
+
+function focusCodeFilePath(path) {
+  var input = document.getElementById('code-file-path');
+  if (input) input.value = path || '';
+  showToast('File path focused. Stored content is already indexed as context.', 'info');
 }
 
 async function saveCodeFile() {
@@ -816,7 +827,6 @@ async function saveCodeFile() {
     showToast(res.error, 'error');
     return;
   }
-  document.getElementById('code-file-content').value = '';
   showToast('File saved and indexed');
   loadCodeFiles();
   if (currentExplorerTab === 'sources') loadSourceTable();

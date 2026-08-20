@@ -1441,6 +1441,325 @@ button:disabled { opacity: 0.65; cursor: wait; }
   line-height: 1.55;
 }
 
+.ide-shell {
+  height: calc(100vh - 32px);
+  min-height: 720px;
+  margin: 16px;
+  overflow: hidden;
+  border: 1px solid #2b313a;
+  border-radius: 10px;
+  background: #111827;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.28);
+}
+.ide-titlebar {
+  height: 42px;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  border-bottom: 1px solid #2b313a;
+  background: #181c22;
+  color: #d7dde7;
+  font-size: 12px;
+}
+.ide-titlebar strong {
+  font-size: 13px;
+  color: #f4f7fb;
+}
+.ide-titlebar button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #2f8f6b;
+  border-radius: 5px;
+  background: #1d8f64;
+  color: #f4fff9;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ide-window-dots {
+  display: flex;
+  gap: 7px;
+}
+.ide-window-dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.ide-window-dots span:nth-child(1) { background: #ff5f57; }
+.ide-window-dots span:nth-child(2) { background: #ffbd2e; }
+.ide-window-dots span:nth-child(3) { background: #28c840; }
+.ide-body {
+  height: calc(100% - 42px);
+  display: grid;
+  grid-template-columns: 48px 260px minmax(420px, 1fr) 380px;
+  background: #0f141b;
+}
+.ide-activity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 6px;
+  border-right: 1px solid #252b34;
+  background: #151a21;
+}
+.ide-activity button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #8f9aaa;
+  font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.ide-activity button.active,
+.ide-activity button:hover {
+  border-left-color: #35d99a;
+  background: #202832;
+  color: #e9fff5;
+}
+.ide-explorer,
+.ide-assistant {
+  min-width: 0;
+  border-right: 1px solid #252b34;
+  background: #171c23;
+  color: #d7dde7;
+}
+.ide-assistant {
+  border-right: 0;
+  border-left: 1px solid #252b34;
+  background: #151a21;
+}
+.ide-pane-head {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #252b34;
+  color: #f4f7fb;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ide-pane-head button {
+  width: 25px;
+  height: 25px;
+  border: 1px solid #33404d;
+  border-radius: 5px;
+  background: #202832;
+  color: #d7dde7;
+  cursor: pointer;
+}
+.ide-pane-head small {
+  color: #35d99a;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ide-project-form {
+  padding: 12px;
+  border-bottom: 1px solid #252b34;
+}
+.ide-project-form label,
+.ide-tree-title {
+  display: block;
+  margin-bottom: 8px;
+  color: #8f9aaa;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ide-project-form input,
+.ide-editor-toolbar input,
+.ide-assistant textarea {
+  width: 100%;
+  border: 1px solid #303846;
+  border-radius: 5px;
+  background: #0f141b;
+  color: #e5eaf2;
+}
+.ide-project-form input {
+  height: 34px;
+  margin-bottom: 8px;
+  padding: 0 9px;
+}
+.ide-action,
+.ide-primary,
+.ide-editor-toolbar button {
+  border: 0;
+  border-radius: 5px;
+  background: #238b63;
+  color: #f4fff9;
+  font-weight: 800;
+  cursor: pointer;
+}
+.ide-action {
+  width: 100%;
+  height: 34px;
+}
+.ide-tree-title {
+  margin: 14px 12px 6px;
+}
+.ide-tree {
+  padding: 0 8px 10px;
+  color: #8f9aaa;
+}
+.ide-tree .code-list-item,
+.ide-tree .code-file-row {
+  margin-bottom: 4px;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #d7dde7;
+}
+.ide-tree .code-list-item:hover,
+.ide-tree .code-list-item.active,
+.ide-tree .code-file-row:hover {
+  border-color: #314c42;
+  background: #1d2a28;
+}
+.ide-tree .code-list-item strong,
+.ide-tree .code-file-row strong {
+  color: #eef4fb;
+  font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+.ide-tree .code-list-item span,
+.ide-tree .code-file-row span {
+  color: #8f9aaa;
+}
+.ide-editor {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 40px 42px 1fr 28px;
+  background: #0d1117;
+}
+.ide-tabs {
+  display: flex;
+  border-bottom: 1px solid #252b34;
+  background: #151a21;
+}
+.ide-tabs button {
+  min-width: 132px;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1px solid #252b34;
+  background: #181c22;
+  color: #8f9aaa;
+  font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+}
+.ide-tabs button.active {
+  background: #0d1117;
+  color: #f4f7fb;
+  box-shadow: inset 0 2px 0 #35d99a;
+}
+.ide-editor-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 116px;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid #252b34;
+  background: #0f141b;
+}
+.ide-editor-toolbar input {
+  height: 30px;
+  margin: 0;
+  padding: 0 9px;
+  font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+}
+.ide-editor-toolbar button {
+  height: 30px;
+}
+.ide-editor textarea#code-file-content {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  resize: none;
+  padding: 18px 22px;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background:
+    linear-gradient(90deg, #121923 0, #121923 44px, transparent 44px),
+    repeating-linear-gradient(#0d1117 0, #0d1117 27px, #111823 28px);
+  color: #d7dde7;
+  font-family: "SF Mono", SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  line-height: 28px;
+  tab-size: 2;
+}
+.ide-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 10px;
+  background: #147a55;
+  color: #effff8;
+  font-size: 11px;
+}
+.ide-assistant {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ide-hint {
+  margin: 12px;
+  color: #aeb8c6;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.ide-assistant textarea {
+  min-height: 110px;
+  margin: 0 12px 10px;
+  padding: 10px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.ide-primary {
+  height: 36px;
+  margin: 0 12px 12px;
+}
+.ide-assistant .code-answer {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0 12px 12px;
+  overflow: auto;
+}
+.ide-assistant .code-answer-block {
+  border-color: #303846;
+  background: #0f141b;
+}
+.ide-assistant .code-answer-block h4 {
+  color: #f4f7fb;
+}
+.ide-assistant .code-answer-block p {
+  color: #d7dde7;
+}
+.ide-assistant .context-chip.light {
+  border-color: #303846;
+  background: #151a21;
+}
+.ide-assistant .context-chip.light strong {
+  color: #35d99a;
+}
+.ide-assistant .context-chip.light p,
+.ide-assistant .context-chip.light small {
+  color: #aeb8c6;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    DATA EXPLORER
    ═══════════════════════════════════════════════════════════════ */
@@ -1937,6 +2256,25 @@ button:disabled { opacity: 0.65; cursor: wait; }
   .code-workspace {
     grid-template-columns: 1fr;
   }
+  .ide-shell {
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    border-radius: 0;
+  }
+  .ide-body {
+    height: auto;
+    grid-template-columns: 44px minmax(210px, 280px) 1fr;
+  }
+  .ide-assistant {
+    grid-column: 1 / -1;
+    min-height: 420px;
+    border-top: 1px solid #252b34;
+    border-left: 0;
+  }
+  .ide-editor {
+    min-height: 620px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -2011,6 +2349,49 @@ button:disabled { opacity: 0.65; cursor: wait; }
   }
   .code-panel {
     padding: 14px;
+  }
+  .ide-titlebar {
+    grid-template-columns: auto 1fr auto;
+  }
+  .ide-titlebar strong {
+    display: none;
+  }
+  .ide-titlebar button {
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .ide-body {
+    display: flex;
+    flex-direction: column;
+  }
+  .ide-activity {
+    display: none;
+  }
+  .ide-explorer {
+    border-right: 0;
+    border-bottom: 1px solid #252b34;
+  }
+  .ide-editor {
+    min-height: 520px;
+  }
+  .ide-tabs {
+    overflow-x: auto;
+  }
+  .ide-tabs button {
+    min-width: 118px;
+  }
+  .ide-editor-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .ide-editor textarea#code-file-content {
+    min-height: 390px;
+    padding: 14px;
+    background: #0d1117;
+    font-size: 12px;
+  }
+  .ide-statusbar {
+    overflow-x: auto;
+    white-space: nowrap;
   }
   .side-panel { padding-left: 12px; padding-right: 12px; }
   .toast {

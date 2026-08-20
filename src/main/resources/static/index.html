@@ -442,87 +442,67 @@
 
         <!-- ── CODE WORKSPACE ───────────────────────────────── -->
         <div id="section-code" class="section">
-          <div class="section-page code-page">
-            <div class="section-header-row">
-              <div>
-                <h2>Cloud Coding Assistant</h2>
-                <p>Upload or connect a project, ask coding tasks, inspect selected context, review plans, and keep your work available from any browser.</p>
-              </div>
-              <button class="btn-sm" onclick="showToast('GitHub OAuth is disabled until the GitHub client id and callback URL are configured.', 'info')">Connect GitHub</button>
+          <div class="ide-shell">
+            <div class="ide-titlebar">
+              <div class="ide-window-dots"><span></span><span></span><span></span></div>
+              <strong>CloudQueryX</strong>
+              <span id="ide-project-title">Cloud Coding Workspace</span>
+              <button onclick="showToast('GitHub OAuth is disabled until the GitHub client id and callback URL are configured.', 'info')">Connect GitHub</button>
             </div>
 
-            <div class="code-product-strip">
-              <div>
-                <strong>Cloud files</strong>
-                <span>S3-backed project storage</span>
-              </div>
-              <div>
-                <strong>Context planner</strong>
-                <span>retrieval reasons and token budget</span>
-              </div>
-              <div>
-                <strong>Human control</strong>
-                <span>plan and diff before edits</span>
-              </div>
-              <div>
-                <strong>Portable work</strong>
-                <span>open projects from any browser</span>
-              </div>
-            </div>
+            <div class="ide-body">
+              <aside class="ide-activity">
+                <button class="active" title="Explorer">EX</button>
+                <button title="Search">SR</button>
+                <button title="Context">CX</button>
+                <button title="Git">GT</button>
+              </aside>
 
-            <div class="code-workspace">
-              <div class="code-panel">
-                <h3>Project</h3>
-                <p class="muted">Create a cloud project. Files are stored in S3 when configured and indexed as CloudQueryX sources for retrieval.</p>
-                <label>Project name</label>
-                <input type="text" id="code-project-name" placeholder="cloudqueryx-web">
-                <label>Description</label>
-                <input type="text" id="code-project-desc" placeholder="What this codebase does">
-                <button class="btn-primary full" onclick="createCodeProject()">Create project</button>
-                <div id="code-project-list" class="code-list muted">No project loaded yet.</div>
-              </div>
+              <aside class="ide-explorer">
+                <div class="ide-pane-head">
+                  <span>Explorer</span>
+                  <button onclick="createCodeProject()" title="Create project">+</button>
+                </div>
+                <div class="ide-project-form">
+                  <label>Project</label>
+                  <input type="text" id="code-project-name" placeholder="cloudqueryx-web">
+                  <input type="text" id="code-project-desc" placeholder="Short description">
+                  <button class="ide-action" onclick="createCodeProject()">Create cloud project</button>
+                </div>
+                <div class="ide-tree-title">Projects</div>
+                <div id="code-project-list" class="ide-tree muted">No project loaded yet.</div>
+                <div class="ide-tree-title">Files</div>
+                <div id="code-file-list" class="ide-tree muted">No files indexed yet.</div>
+              </aside>
 
-              <div class="code-panel code-file-panel">
-                <h3>Project files</h3>
-                <p class="muted">Save code, config, docs, or logs. Each file becomes cloud storage plus searchable context.</p>
-                <label>File path</label>
-                <input type="text" id="code-file-path" placeholder="src/main/java/App.java">
-                <label>Content</label>
-                <textarea id="code-file-content" rows="12" placeholder="Paste code, config, logs, or docs..."></textarea>
-                <button class="btn-primary full" onclick="saveCodeFile()">Save and index file</button>
-                <div id="code-file-list" class="code-list muted">No files indexed yet.</div>
-              </div>
+              <main class="ide-editor">
+                <div class="ide-tabs">
+                  <button class="active">editor</button>
+                  <button>context.bundle</button>
+                  <button>review.plan</button>
+                </div>
+                <div class="ide-editor-toolbar">
+                  <input type="text" id="code-file-path" placeholder="src/main/java/App.java">
+                  <button onclick="saveCodeFile()">Save + index</button>
+                </div>
+                <textarea id="code-file-content" spellcheck="false" placeholder="Paste or write code here. CloudQueryX saves the file, stores it in cloud storage when configured, chunks it, and indexes it as retrieval context."></textarea>
+                <div class="ide-statusbar">
+                  <span>Cloud file storage</span>
+                  <span>Context indexing enabled</span>
+                  <span>Review before edit</span>
+                </div>
+              </main>
 
-              <div class="code-panel code-assistant-panel">
-                <h3>Ask the coding assistant</h3>
-                <p class="muted">CloudQueryX retrieves relevant files and memory first, then the LLM explains the plan, risks, verification steps, and patch strategy.</p>
-                <textarea id="code-task" rows="5" placeholder="Example: Find why login fails after deployment and explain which files matter."></textarea>
-                <button class="btn-primary full" onclick="askCodeAssistant()">Ask with code context</button>
-                <div id="code-answer" class="code-answer muted">Upload files, then ask a coding question.</div>
-              </div>
-            </div>
-
-            <div class="code-workflow-board">
-              <div>
-                <span>01</span>
-                <strong>Retrieve</strong>
-                <p>Find related files, chunks, memories, events, and graph relationships before the model answers.</p>
-              </div>
-              <div>
-                <span>02</span>
-                <strong>Plan</strong>
-                <p>Show selected context, assumptions, risks, and test strategy so the user understands the change.</p>
-              </div>
-              <div>
-                <span>03</span>
-                <strong>Review</strong>
-                <p>Patch review is the next production slice: no silent edits, no hidden file changes.</p>
-              </div>
-              <div>
-                <span>04</span>
-                <strong>Commit</strong>
-                <p>GitHub commit and push activate after OAuth is configured for the deployment.</p>
-              </div>
+              <aside class="ide-assistant">
+                <div class="ide-pane-head">
+                  <span>Assistant</span>
+                  <small>context-first</small>
+                </div>
+                <p class="ide-hint">Ask for a coding change. CloudQueryX retrieves files, memory, events, and source chunks before the model responds.</p>
+                <textarea id="code-task" rows="5" placeholder="Find why login fails after deployment and explain which files matter."></textarea>
+                <button class="ide-primary" onclick="askCodeAssistant()">Ask with code context</button>
+                <div id="code-answer" class="code-answer muted">Create a project, save files, then ask a coding question.</div>
+              </aside>
             </div>
           </div>
         </div>

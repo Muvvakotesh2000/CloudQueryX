@@ -928,10 +928,11 @@ function fileIcon(path) {
 
 function isSkippableUpload(file) {
   var path = String(file.webkitRelativePath || file.name || '').replace(/\\/g, '/');
-  if (!path || path.includes('/.git/') || path.includes('/node_modules/') || path.includes('/build/') || path.includes('/dist/') || path.includes('/target/')) return true;
+  var wrapped = '/' + path.toLowerCase();
+  if (!path || wrapped.includes('/.git/') || wrapped.includes('/node_modules/') || wrapped.includes('/build/') || wrapped.includes('/dist/') || wrapped.includes('/target/') || wrapped.includes('/__pycache__/') || wrapped.includes('/.pytest_cache/') || wrapped.includes('/.next/') || wrapped.includes('/.gradle/')) return true;
   if (file.size > 1024 * 1024) return true;
   var lower = path.toLowerCase();
-  return /\.(png|jpg|jpeg|gif|webp|ico|pdf|zip|jar|class|exe|dll|so|dylib|mp4|mov|mp3|wav|woff|woff2|ttf)$/i.test(lower);
+  return /\.(png|jpg|jpeg|gif|webp|ico|pdf|zip|jar|class|pyc|pyo|exe|dll|so|dylib|mp4|mov|mp3|wav|woff|woff2|ttf)$/i.test(lower);
 }
 
 async function uploadLocalProjectFiles(fileList) {
@@ -1001,16 +1002,31 @@ async function uploadProjectFileWithPresignedUrl(path, fileOrBlob, language) {
       body: fileOrBlob
     });
   } catch (e) {
-    return { error: 'Browser could not upload directly to S3. Check bucket CORS for PUT from this domain. ' + (e.message || '') };
+    return uploadProjectFileThroughBackend(path, fileOrBlob, language,
+      'Direct S3 upload blocked by browser/CORS; retried through backend.');
   }
   if (!putRes.ok) {
-    return { error: 'S3 direct upload failed with status ' + putRes.status + '. Check bucket CORS and IAM s3:PutObject permission.' };
+    return uploadProjectFileThroughBackend(path, fileOrBlob, language,
+      'Direct S3 upload failed with status ' + putRes.status + '; retried through backend.');
   }
 
   return api('/api/code/projects/' + currentCodeProjectId + '/files/complete', {
     method: 'POST',
     body: JSON.stringify({ path: path, language: language, s3Key: presign.s3Key, sizeBytes: fileOrBlob.size || 0 })
   });
+}
+
+async function uploadProjectFileThroughBackend(path, fileOrBlob, language, note) {
+  setCodeUploadStatus((note || 'Using backend upload fallback') + ' ' + path, 'warn');
+  var content = await fileOrBlob.text();
+  var res = await api('/api/code/projects/' + currentCodeProjectId + '/files', {
+    method: 'POST',
+    body: JSON.stringify({ path: path, content: content, language: language })
+  });
+  if (res.error && note) {
+    res.error = note + ' Backend fallback failed: ' + res.error;
+  }
+  return res;
 }
 
 function contentTypeForUpload(language) {

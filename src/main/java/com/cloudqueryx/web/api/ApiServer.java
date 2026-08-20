@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ApiServer {
@@ -45,9 +44,6 @@ public class ApiServer {
     private ContextRetrievalService contextRetrievalService;
     private ContextBundleService contextBundleService;
     private OpenAiChatService openAiChatService;
-    private TraceEventRepository traceEventRepo;
-    private final TraceEventHub traceEventHub = new TraceEventHub();
-    private final ExecutorService traceExecutor = Executors.newFixedThreadPool(4);
     private volatile boolean schemaMigrationStarted;
     private volatile boolean backendReady;
     private volatile Throwable startupError;
@@ -90,7 +86,6 @@ public class ApiServer {
         SourceRepository sourceRepo = new SourceRepository(databaseConfig);
         ContextChunkRepository chunkRepo = new ContextChunkRepository(databaseConfig);
         ContextBundleRepository bundleRepo = new ContextBundleRepository(databaseConfig);
-        this.traceEventRepo = new TraceEventRepository(databaseConfig);
         TokenEstimator tokenEstimator = new TokenEstimator();
         this.sourceService = new SourceService(sourceRepo, chunkRepo, new ChunkingService(tokenEstimator), embeddingService);
         this.contextRetrievalService = new ContextRetrievalService(
@@ -176,7 +171,6 @@ public class ApiServer {
 
     public void stop() {
         server.stop(1);
-        traceExecutor.shutdownNow();
         if (dbConfig != null) {
             dbConfig.close();
         }
@@ -202,8 +196,6 @@ public class ApiServer {
         server.createContext("/api/v1/recall", ex -> wrap(ex, this::handleExternalRecall));
         server.createContext("/api/v1/retrieve", ex -> wrap(ex, this::handleExternalRetrieve));
         server.createContext("/api/v1/context/build", ex -> wrap(ex, this::handleExternalContextBuild));
-        server.createContext("/v1/context/plan", ex -> wrap(ex, this::handleContextPlan));
-        server.createContext("/v1/trace", ex -> wrap(ex, this::handleTraceReplay));
         server.createContext("/api/vectors", ex -> wrap(ex, this::handleVectors));
         server.createContext("/api/semantic", ex -> wrap(ex, this::handleSemantic));
         server.createContext("/api/events", ex -> wrap(ex, this::handleEvents));
@@ -552,97 +544,6 @@ public class ApiServer {
         } catch (IllegalArgumentException e) {
             sendError(ex, 400, e.getMessage());
         }
-    }
-
-    private void handleContextPlan(HttpExchange ex) throws IOException {
-        String path = ex.getRequestURI().getPath();
-        if ("GET".equalsIgnoreCase(ex.getRequestMethod()) && path.startsWith("/v1/context/plan/") && path.endsWith("/events")) {
-            String requestId = path.substring("/v1/context/plan/".length(), path.length() - "/events".length());
-            if (requestId.isBlank()) {
-                sendError(ex, 400, "requestId required");
-                return;
-            }
-            traceEventHub.stream(ex, requestId);
-            return;
-        }
-        if (!requireMethod(ex, "POST")) return;
-        SessionRepository.SessionRow session = requireAuth(ex);
-        if (session == null) return;
-        String dbId = requireDatabaseId(ex, session);
-        if (dbId == null) return;
-
-        Map<String, Object> body = JsonUtil.parseBody(ex.getRequestBody());
-        String query = requiredBodyString(body, "query");
-        String requestId = UUID.randomUUID().toString();
-        String targetModel = Objects.requireNonNullElse(JsonUtil.getString(body, "targetModel"), "medium-context-model");
-        int tokenBudget = JsonUtil.getInt(body, "tokenBudget", 8000);
-        String mode = Objects.requireNonNullElse(JsonUtil.getString(body, "mode"), "general");
-        boolean includeExplanations = JsonUtil.getBoolean(body, "includeExplanations", true);
-        List<String> sourceTypes = stringList(body.get("sourceTypes"));
-        boolean includeMemories = JsonUtil.getBoolean(body, "includeMemories", true);
-        boolean includeSources = JsonUtil.getBoolean(body, "includeSources", true);
-        boolean includeGraph = JsonUtil.getBoolean(body, "includeGraph", true);
-        boolean includeEvents = JsonUtil.getBoolean(body, "includeEvents", true);
-
-        traceExecutor.submit(() -> runContextPlanTrace(requestId, dbId, session.userId(), query, targetModel,
-                tokenBudget, mode, includeExplanations, sourceTypes, includeMemories, includeSources,
-                includeGraph, includeEvents));
-        sendJson(ex, 202, Map.of(
-                "requestId", requestId,
-                "eventsUrl", "/v1/context/plan/" + requestId + "/events"));
-    }
-
-    private void runContextPlanTrace(String requestId, String dbId, String userId, String query, String targetModel,
-                                     int tokenBudget, String mode, boolean includeExplanations,
-                                     List<String> sourceTypes, boolean includeMemories, boolean includeSources,
-                                     boolean includeGraph, boolean includeEvents) {
-        try {
-            ContextBundleService.TraceSink sink = (stage, payload) -> publishTrace(dbId,
-                    new TraceEvent(requestId, stage, payload));
-            ContextBundleService.BundleBuildResult result = contextBundleService.buildTraced(
-                    sink, dbId, userId, query, targetModel, tokenBudget, mode, includeExplanations,
-                    sourceTypes, includeMemories, includeSources, includeGraph, includeEvents);
-            traceEventRepo.attachBundle(dbId, requestId, result.contextBundleId());
-            publishTrace(dbId, new TraceEvent(requestId, result.contextBundleId(), "complete",
-                    Map.of("bundle", bundleToMap(result)), Instant.now()));
-        } catch (Exception e) {
-            publishTrace(dbId, new TraceEvent(requestId, "error", Map.of("message", e.getMessage())));
-        } finally {
-            traceEventHub.close(requestId);
-        }
-    }
-
-    private void publishTrace(String dbId, TraceEvent event) {
-        try {
-            traceEventRepo.save(dbId, event);
-        } catch (RuntimeException e) {
-            log.warn("Failed to persist trace event {} for {}: {}", event.stage(), event.requestId(), e.getMessage());
-        }
-        traceEventHub.publish(event);
-    }
-
-    private void handleTraceReplay(HttpExchange ex) throws IOException {
-        if (!requireMethod(ex, "GET")) return;
-        SessionRepository.SessionRow session = requireAuth(ex);
-        if (session == null) return;
-        String dbId = requireDatabaseId(ex, session);
-        if (dbId == null) return;
-        String prefix = "/v1/trace/";
-        String path = ex.getRequestURI().getPath();
-        if (!path.startsWith(prefix) || path.length() <= prefix.length()) {
-            sendError(ex, 404, "Trace route not found");
-            return;
-        }
-        String bundleId = path.substring(prefix.length());
-        Optional<ContextBundleRepository.BundleWithItems> bundle = contextBundleService.get(dbId, bundleId);
-        if (bundle.isEmpty() || !session.userId().equals(bundle.get().bundle().userId())) {
-            sendError(ex, 404, "Bundle not found");
-            return;
-        }
-        List<Map<String, Object>> events = traceEventRepo.listByBundle(dbId, bundleId).stream()
-                .map(this::traceEventToMap)
-                .toList();
-        sendJson(ex, 200, Map.of("bundleId", bundleId, "events", events));
     }
 
     private void handleContextBundleExplain(HttpExchange ex) throws IOException {
@@ -1481,16 +1382,6 @@ public class ApiServer {
         map.put("retrievalSource", item.retrievalSource());
         map.put("compressionDecision", item.compressionDecision());
         map.put("freshnessDecision", item.freshnessDecision());
-        return map;
-    }
-
-    private Map<String, Object> traceEventToMap(TraceEvent event) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("requestId", event.requestId());
-        map.put("bundleId", event.bundleId());
-        map.put("stage", event.stage());
-        map.put("payload", event.payload());
-        map.put("timestamp", event.timestamp());
         return map;
     }
 

@@ -11,8 +11,6 @@ var forceGraph = null;
 var demoMode = sessionStorage.getItem('cqx_demo_mode') === '1';
 var demoMessageCount = Number(sessionStorage.getItem('cqx_demo_messages') || '0');
 var DEMO_MESSAGE_LIMIT = 20;
-var cognitionTraceSource = null;
-var cognitionTraceState = { candidates: {}, events: [], rawPayload: null, bundleId: null };
 
 var API = '';
 function api(path, opts) {
@@ -501,7 +499,6 @@ async function sendAssistantMessage() {
     updateDemoMeter();
   }
   renderMiniFlow('Message');
-  startCognitionTrace(message, inferChatMode(message));
   appendChatMessage('user', message);
   renderMiniFlow('Retrieve');
   appendChatMessage('assistant', 'Building context bundle...', true);
@@ -676,179 +673,6 @@ function renderMiniFlow(activeLabel) {
   }).join('') + '</div>';
 }
 
-async function startCognitionTrace(query, mode) {
-  resetCognitionTrace();
-  setTraceStage('query');
-  if (!window.EventSource) {
-    renderTraceFallback('Live SSE is not available in this browser. Showing static context after the answer returns.');
-    return;
-  }
-  var res = await api('/v1/context/plan', {
-    method: 'POST',
-    body: JSON.stringify({
-      query: query,
-      targetModel: 'medium-context-model',
-      tokenBudget: 8000,
-      mode: mode || 'general',
-      includeExplanations: true,
-      includeMemories: true,
-      includeSources: true,
-      includeGraph: true,
-      includeEvents: true
-    })
-  });
-  if (res.error || !res.requestId) {
-    renderTraceFallback(res.error || 'Could not start Cognition Trace.');
-    return;
-  }
-  if (cognitionTraceSource) cognitionTraceSource.close();
-  cognitionTraceSource = new EventSource(res.eventsUrl);
-  ['retrieve', 'rank', 'conflict_check', 'policy_filter', 'trim', 'bundle', 'handoff', 'response', 'complete', 'error'].forEach(function(stage) {
-    cognitionTraceSource.addEventListener(stage, function(e) {
-      try { applyCognitionTraceEvent(JSON.parse(e.data)); }
-      catch (err) { renderTraceFallback('Trace event parse failed: ' + err.message); }
-    });
-  });
-  cognitionTraceSource.onerror = function() {
-    if (cognitionTraceState.events.length === 0) renderTraceFallback('Live trace connection was unavailable. The answer can still complete.');
-    if (cognitionTraceSource) cognitionTraceSource.close();
-  };
-}
-
-function resetCognitionTrace() {
-  cognitionTraceState = { candidates: {}, events: [], rawPayload: null, bundleId: null };
-  ['query', 'retrieve', 'rank', 'policy', 'trim', 'bundle'].forEach(function(stage) { setTraceStage(stage, false); });
-  setTraceCounters(0, 0, 0, 0);
-  var board = document.getElementById('trace-candidate-board');
-  if (board) board.innerHTML = '<p class="muted">Waiting for backend planner events...</p>';
-  var raw = document.getElementById('trace-raw-payload');
-  if (raw) { raw.textContent = ''; raw.style.display = 'none'; }
-}
-
-function applyCognitionTraceEvent(event) {
-  cognitionTraceState.events.push(event);
-  var payload = event.payload || {};
-  if (event.stage === 'retrieve') {
-    setTraceStage('retrieve');
-    (payload.candidateIds || []).forEach(function(id) { cognitionTraceState.candidates[id] = { id: id, state: 'active', reason: 'Retrieved by backend planner' }; });
-    setTraceCounters(payload.count || 0, 0, 0, 0);
-    renderTraceCandidates();
-  } else if (event.stage === 'rank') {
-    setTraceStage('rank');
-    (payload.survivingIds || []).forEach(function(id) { markCandidate(id, 'active', 'Survived ranking'); });
-    (payload.droppedIds || []).forEach(function(id) { markCandidate(id, 'dropped', (payload.droppedReasons || {})[id] || 'Dropped during ranking'); });
-    renderTraceCandidates();
-  } else if (event.stage === 'conflict_check' || event.stage === 'policy_filter') {
-    setTraceStage('policy');
-    (payload.deniedIds || []).forEach(function(id) { markCandidate(id, 'denied', 'Denied by policy filter'); });
-    (payload.redactedIds || []).forEach(function(id) { markCandidate(id, 'dropped', 'Redacted by policy filter'); });
-    renderTraceCandidates();
-  } else if (event.stage === 'trim') {
-    setTraceStage('trim');
-    (payload.includedIds || []).forEach(function(id) { markCandidate(id, 'included', 'Included in token-budgeted bundle'); });
-    (payload.excludedIds || []).forEach(function(id) { markCandidate(id, 'dropped', (payload.excludedReasons || {})[id] || 'Excluded by token budget'); });
-    setTraceCounters(Object.keys(cognitionTraceState.candidates).length, (payload.includedIds || []).length, payload.tokensUsed || 0, payload.tokensBudget || 0);
-    renderTraceCandidates();
-  } else if (event.stage === 'bundle') {
-    setTraceStage('bundle');
-    cognitionTraceState.bundleId = payload.bundleId || cognitionTraceState.bundleId;
-    cognitionTraceState.rawPayload = payload.rawPayload || payload;
-    setTraceCounters(Object.keys(cognitionTraceState.candidates).length, payload.itemCount || 0, payload.tokensUsed || 0, payload.tokensBudget || 8000);
-    renderTraceRawPayload(payload);
-  } else if (event.stage === 'handoff') {
-    setTraceStage('bundle');
-    cognitionTraceState.rawPayload = payload.rawPayload || payload;
-    renderTraceRawPayload(payload);
-  } else if (event.stage === 'complete') {
-    if (cognitionTraceSource) cognitionTraceSource.close();
-  } else if (event.stage === 'error') {
-    renderTraceFallback(payload.message || 'Trace failed.');
-  }
-}
-
-function markCandidate(id, state, reason) {
-  if (!cognitionTraceState.candidates[id]) cognitionTraceState.candidates[id] = { id: id };
-  cognitionTraceState.candidates[id].state = state;
-  cognitionTraceState.candidates[id].reason = reason;
-}
-
-function renderTraceCandidates() {
-  var board = document.getElementById('trace-candidate-board');
-  if (!board) return;
-  var candidates = Object.values(cognitionTraceState.candidates);
-  if (candidates.length === 0) {
-    board.innerHTML = '<p class="muted">No candidates yet.</p>';
-    return;
-  }
-  board.innerHTML = candidates.slice(0, 36).map(function(item) {
-    return '<span class="trace-chip ' + esc(item.state || 'active') + '" title="' + esc(item.reason || '') + '">' + esc(shortTraceId(item.id)) + '</span>';
-  }).join('') + (candidates.length > 36 ? '<span class="trace-chip">+' + (candidates.length - 36) + '</span>' : '');
-}
-
-function shortTraceId(id) {
-  id = String(id || 'context');
-  var parts = id.split(':');
-  var type = parts.length > 1 ? parts[0] : 'ctx';
-  var value = parts.length > 1 ? parts.slice(1).join(':') : id;
-  return type + ':' + value.replace(/-/g, '').substring(0, 6);
-}
-
-function setTraceStage(stage, active) {
-  var order = ['query', 'retrieve', 'rank', 'policy', 'trim', 'bundle'];
-  var target = order.indexOf(stage);
-  document.querySelectorAll('[data-trace-stage]').forEach(function(el) {
-    var idx = order.indexOf(el.dataset.traceStage);
-    el.classList.toggle('done', target >= 0 && idx >= 0 && idx < target);
-    el.classList.toggle('active', active === false ? false : el.dataset.traceStage === stage);
-  });
-}
-
-function setTraceCounters(candidates, included, tokensUsed, tokensBudget) {
-  var c = document.getElementById('trace-candidates');
-  var i = document.getElementById('trace-included');
-  var t = document.getElementById('trace-tokens');
-  if (c) c.textContent = candidates;
-  if (i) i.textContent = included;
-  if (t) t.textContent = tokensUsed + ' / ' + tokensBudget;
-}
-
-function renderTraceRawPayload(payload) {
-  var raw = document.getElementById('trace-raw-payload');
-  if (!raw) return;
-  raw.textContent = JSON.stringify(payload, null, 2);
-}
-
-function toggleTraceRaw() {
-  var raw = document.getElementById('trace-raw-payload');
-  if (!raw) return;
-  raw.style.display = raw.style.display === 'none' ? 'block' : 'none';
-}
-
-function renderTraceFallback(message) {
-  var board = document.getElementById('trace-candidate-board');
-  if (board) board.innerHTML = '<p class="muted">' + esc(message) + '</p>';
-}
-
-function renderStoredTraceEvent(event) {
-  var div = document.getElementById('chat-memory-suggestions');
-  if (!div) return;
-  var payload = event.payload || {};
-  var feed = document.createElement('div');
-  feed.className = 'stored-feed-item';
-  feed.textContent = 'Stored memory: ' + (payload.summary || payload.memoryId || 'new context') + ' confidence ' + (payload.confidence || 0.8);
-  div.prepend(feed);
-}
-
-async function replayCognitionTrace(bundleId) {
-  resetCognitionTrace();
-  var res = await api('/v1/trace/' + encodeURIComponent(bundleId), { method: 'GET' });
-  if (res.error) {
-    renderTraceFallback(res.error);
-    return;
-  }
-  (res.events || []).forEach(applyCognitionTraceEvent);
-}
-
 function countBundleTypes(items) {
   var counts = { total: items.length, memory: 0, source: 0, graph: 0, event: 0 };
   items.forEach(function(item) {
@@ -931,19 +755,7 @@ async function storeAssistantSuggestion(suggestion) {
   } else if (suggestion.type === 'event') {
     res = await api('/api/events', { method: 'POST', body: JSON.stringify({ eventType: suggestion.eventType || 'ASSISTANT_MEMORY', action: suggestion.content }) });
   }
-  var result = res || { error: 'Unsupported type: ' + suggestion.type };
-  if (!result.error) {
-    renderStoredTraceEvent({
-      stage: 'stored',
-      payload: {
-        memoryId: result.id || result.stored?.id || suggestion.name || suggestion.type,
-        summary: suggestion.content || suggestion.name || suggestion.title,
-        confidence: suggestion.confidence || 0.8
-      },
-      timestamp: new Date().toISOString()
-    });
-  }
-  return result;
+  return res || { error: 'Unsupported type: ' + suggestion.type };
 }
 
 async function saveSuggestedRelationship(suggestion) {

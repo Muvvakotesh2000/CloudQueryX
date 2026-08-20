@@ -116,12 +116,14 @@ public final class OpenAiChatService {
                   entityType values: PERSON, PROJECT, CONCEPT, SERVICE, DATABASE, MODEL.
                   ALWAYS set "name" to the entity's proper name.
                   Example: "my brother Adam" → type:"entity", entityType:"PERSON", name:"Adam", content:"User's brother"
+                  Example: "CloudQueryX uses Supabase PostgreSQL" → entity:"CloudQueryX"/PROJECT and entity:"Supabase PostgreSQL"/DATABASE
 
                 TYPE 3 — "relationship" (Knowledge Graph Edges):
                   Use for: ANY connection between two named things — family ties, ownership, usage, creation, employment, etc.
-                  ALWAYS set sourceEntity, targetEntity, and relationshipType.
-                  Common relationshipTypes: BROTHER_OF, SISTER_OF, MOTHER_OF, FATHER_OF, SON_OF, DAUGHTER_OF, COUSIN_OF, SPOUSE_OF, FRIEND_OF, WORKS_AT, USES, BUILT_WITH, CREATED_BY, OWNS, MANAGES, DEPENDS_ON, RELATED_TO.
+                  ALWAYS set sourceEntity, sourceEntityType, targetEntity, targetEntityType, and relationshipType.
+                  Common relationshipTypes: BROTHER_OF, SISTER_OF, MOTHER_OF, FATHER_OF, SON_OF, DAUGHTER_OF, COUSIN_OF, SPOUSE_OF, FRIEND_OF, WORKS_AT, USES, BUILT_WITH, CREATED_BY, OWNS, MANAGES, DEPENDS_ON, COMBINES, STORES_IN, RETRIEVES_FROM, RANKS_WITH, FORMATS_FOR, RELATED_TO.
                   Example: "Adam's mother is Sara" → type:"relationship", sourceEntity:"Sara", targetEntity:"Adam", relationshipType:"MOTHER_OF"
+                  Example: "CloudQueryX uses pgvector" → sourceEntity:"CloudQueryX", sourceEntityType:"PROJECT", targetEntity:"pgvector", targetEntityType:"DATABASE", relationshipType:"USES"
 
                 TYPE 4 — "source" (Documents/Code/Logs):
                   Use for: code snippets, error logs, documentation, architecture notes, config samples, markdown, long technical text (>200 chars).
@@ -142,8 +144,15 @@ public final class OpenAiChatService {
                 1. One type:"entity" for EACH distinct person/project/tool mentioned.
                 2. One type:"relationship" for EACH connection between them.
                 3. Optionally one type:"memory" for the overall fact if it's also a personal preference/decision.
+                4. One type:"source" when the message contains architecture, logs, code, config, docs, or a long technical explanation.
+                5. One type:"event" when the message says something changed, shipped, failed, started, was fixed, was decided, or happened.
 
                 DO NOT collapse relationship statements into a single type:"memory". Break them apart.
+                Natural project messages should map to the real storage tabs:
+                - Product/project statement → memory + PROJECT entity.
+                - Architecture statement → source + entities + relationships.
+                - Timeline/change statement → event.
+                - "uses", "stores in", "retrieves from", "combines", "formats for" → relationship.
 
                 Example input: "my brother is Adam, Adam's mother is Sara, I used Java for CloudQueryX"
                 Required output — 8 suggestions:
@@ -155,6 +164,21 @@ public final class OpenAiChatService {
                   - relationship: {sourceEntity:"Sara", targetEntity:"Adam", relationshipType:"MOTHER_OF"}
                   - relationship: {sourceEntity:"CloudQueryX", targetEntity:"Java", relationshipType:"BUILT_WITH"}
                   - memory: {memoryType:"FACT", content:"User used Java for CloudQueryX", importance:0.9}
+
+                Example input: "CloudQueryX architecture is Website UI to Java API Server to Context Runtime. It stores memories, sources, graph relationships, and events in Supabase PostgreSQL with pgvector."
+                Required output:
+                  - memory: {memoryType:"FACT", content:"CloudQueryX architecture is Website UI -> Java API Server -> Context Runtime -> Supabase PostgreSQL with pgvector.", importance:0.95}
+                  - source: {sourceType:"document", name:"CloudQueryX architecture note", content:"...architecture text..."}
+                  - entity: {name:"CloudQueryX", entityType:"PROJECT"}
+                  - entity: {name:"Website UI", entityType:"SERVICE"}
+                  - entity: {name:"Java API Server", entityType:"SERVICE"}
+                  - entity: {name:"Context Runtime", entityType:"SERVICE"}
+                  - entity: {name:"Supabase PostgreSQL", entityType:"DATABASE"}
+                  - entity: {name:"pgvector", entityType:"DATABASE"}
+                  - relationship: {sourceEntity:"Website UI", sourceEntityType:"SERVICE", targetEntity:"Java API Server", targetEntityType:"SERVICE", relationshipType:"USES"}
+                  - relationship: {sourceEntity:"Java API Server", sourceEntityType:"SERVICE", targetEntity:"Context Runtime", targetEntityType:"SERVICE", relationshipType:"USES"}
+                  - relationship: {sourceEntity:"CloudQueryX", sourceEntityType:"PROJECT", targetEntity:"Supabase PostgreSQL", targetEntityType:"DATABASE", relationshipType:"STORES_IN"}
+                  - relationship: {sourceEntity:"CloudQueryX", sourceEntityType:"PROJECT", targetEntity:"pgvector", targetEntityType:"DATABASE", relationshipType:"USES"}
 
                 Return only valid JSON:
                 {
@@ -169,9 +193,14 @@ public final class OpenAiChatService {
                       "content": "content to store",
                       "memoryType": "FACT|PREFERENCE|DECISION|CONVERSATION|FEEDBACK|WORKING|SEMANTIC|EPISODIC|PROCEDURAL",
                       "sourceType": "document|code|log|conversation|note|markdown|config",
+                      "sourceName": "descriptive source title",
                       "entityType": "PERSON|PROJECT|CONCEPT|SERVICE|DATABASE|MODEL",
+                      "name": "entity name or source title",
                       "sourceEntity": "optional source entity name",
+                      "sourceEntityType": "PERSON|PROJECT|CONCEPT|SERVICE|DATABASE|MODEL",
                       "targetEntity": "optional target entity name",
+                      "targetEntityType": "PERSON|PROJECT|CONCEPT|SERVICE|DATABASE|MODEL",
+                      "eventType": "USER_TIMELINE|PROJECT_MILESTONE|DEPLOYMENT|INCIDENT|ASSISTANT_MEMORY",
                       "relationshipType": "optional relationship type",
                       "importance": 0.0,
                       "confidence": 0.0,

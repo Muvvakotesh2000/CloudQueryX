@@ -686,25 +686,40 @@ function countBundleTypes(items) {
 }
 
 function normalizeMemorySuggestions(items) {
-  return (items || [])
+  var normalized = (items || [])
     .filter(function(item) { return item && (item.action || 'store') !== 'none'; })
     .map(function(item) {
+      var type = normalizeSuggestionType(item.type);
+      var content = cleanSuggestionContent(item.content || item.description || item.summary || item.name || '');
+      var sourceEntity = cleanEntityName(item.sourceEntity || item.fromEntity || item.subject || '');
+      var targetEntity = cleanEntityName(item.targetEntity || item.toEntity || item.object || '');
+      var name = cleanEntityName(item.name || item.sourceName || sourceEntity || targetEntity || previewText(content, 80));
       return {
-        type: String(item.type || 'memory').toLowerCase(),
-        memoryType: item.memoryType || 'CONVERSATION',
-        sourceType: item.sourceType || 'note',
-        entityType: item.entityType || 'CONCEPT',
-        title: suggestionTitle(item),
-        content: item.content || '',
-        name: item.name || item.sourceEntity || item.targetEntity || '',
-        sourceEntity: item.sourceEntity || '',
-        targetEntity: item.targetEntity || '',
-        relationshipType: item.relationshipType || 'RELATED_TO',
+        type: type,
+        memoryType: normalizeMemoryType(item.memoryType),
+        sourceType: normalizeSourceType(item.sourceType, content),
+        entityType: normalizeEntityType(item.entityType || inferEntityType(name, content)),
+        sourceEntityType: normalizeEntityType(item.sourceEntityType || inferEntityType(sourceEntity, content)),
+        targetEntityType: normalizeEntityType(item.targetEntityType || inferEntityType(targetEntity, content)),
+        eventType: normalizeEventType(item.eventType, content),
+        title: suggestionTitle(Object.assign({}, item, { type: type })),
+        content: content,
+        name: name,
+        sourceName: item.sourceName || name || 'Assistant saved source',
+        sourceEntity: sourceEntity,
+        targetEntity: targetEntity,
+        relationshipType: normalizeRelationshipType(item.relationshipType, content),
         importance: typeof item.importance === 'number' ? item.importance : 0.75,
         confidence: typeof item.confidence === 'number' ? item.confidence : 0.8,
         reason: item.reason || 'Suggested by the model.'
       };
+    })
+    .filter(function(item) {
+      if (item.type === 'relationship') return item.sourceEntity && item.targetEntity;
+      if (item.type === 'entity') return item.name;
+      return item.content || item.name;
     });
+  return uniqueSuggestions(normalized).slice(0, 18);
 }
 
 function suggestionTitle(item) {
@@ -745,48 +760,102 @@ function renderAutoSavedContext() {
 async function storeAssistantSuggestion(suggestion) {
   var res;
   if (suggestion.type === 'memory') {
-    res = await api('/api/memory', { method: 'POST', body: JSON.stringify({ action: 'store', content: suggestion.content, type: suggestion.memoryType || 'CONVERSATION', importance: suggestion.importance || 0.8 }) });
+    res = await api('/api/memory', { method: 'POST', body: JSON.stringify({
+      action: 'store',
+      content: suggestion.content,
+      type: normalizeMemoryType(suggestion.memoryType),
+      importance: suggestion.importance || 0.8
+    }) });
   } else if (suggestion.type === 'source') {
-    res = await api('/api/sources', { method: 'POST', body: JSON.stringify({ sourceType: suggestion.sourceType || 'note', sourceName: suggestion.name || 'Auto-saved context', content: suggestion.content, metadata: { origin: 'assistant', confidence: suggestion.confidence || 0.8 } }) });
+    res = await api('/api/sources', { method: 'POST', body: JSON.stringify({
+      sourceType: normalizeSourceType(suggestion.sourceType, suggestion.content),
+      sourceName: suggestion.sourceName || suggestion.name || 'Assistant saved context',
+      content: suggestion.content,
+      metadata: { origin: 'assistant', confidence: suggestion.confidence || 0.8, reason: suggestion.reason || '' }
+    }) });
   } else if (suggestion.type === 'entity') {
-    res = await api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'add_entity', entityType: suggestion.entityType || 'CONCEPT', name: suggestion.name || previewText(suggestion.content, 80), description: suggestion.content }) });
+    res = await api('/api/semantic', { method: 'POST', body: JSON.stringify({
+      action: 'add_entity',
+      entityType: normalizeEntityType(suggestion.entityType || inferEntityType(suggestion.name, suggestion.content)),
+      name: suggestion.name || previewText(suggestion.content, 80),
+      description: suggestion.content || suggestion.name,
+      confidence: suggestion.confidence || 0.8,
+      source: 'assistant'
+    }) });
   } else if (suggestion.type === 'relationship') {
     res = await saveSuggestedRelationship(suggestion);
   } else if (suggestion.type === 'event') {
-    res = await api('/api/events', { method: 'POST', body: JSON.stringify({ eventType: suggestion.eventType || 'ASSISTANT_MEMORY', action: suggestion.content }) });
+    res = await api('/api/events', { method: 'POST', body: JSON.stringify({
+      eventType: normalizeEventType(suggestion.eventType, suggestion.content),
+      action: suggestion.content
+    }) });
   }
   return res || { error: 'Unsupported type: ' + suggestion.type };
 }
 
 async function saveSuggestedRelationship(suggestion) {
-  var leftName = suggestion.sourceEntity || 'User';
-  var rightName = suggestion.targetEntity || previewText(suggestion.content, 80) || 'Context';
-  var leftType = suggestion.sourceEntityType || suggestion.entityType || 'PERSON';
-  var rightType = suggestion.targetEntityType || suggestion.entityType || 'PERSON';
+  var leftName = cleanEntityName(suggestion.sourceEntity || 'User');
+  var rightName = cleanEntityName(suggestion.targetEntity || previewText(suggestion.content, 80) || 'Context');
+  var leftType = normalizeEntityType(suggestion.sourceEntityType || inferEntityType(leftName, suggestion.content));
+  var rightType = normalizeEntityType(suggestion.targetEntityType || inferEntityType(rightName, suggestion.content));
   var left = await api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'add_entity', entityType: leftType, name: leftName, description: suggestion.content || leftName }) });
   if (left.error) return left;
   var right = await api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'add_entity', entityType: rightType, name: rightName, description: suggestion.content || rightName }) });
   if (right.error) return right;
-  return api('/api/semantic', { method: 'POST', body: JSON.stringify({ action: 'add_relationship', sourceEntityId: left.id, targetEntityId: right.id, relationshipType: suggestion.relationshipType || 'RELATED_TO' }) });
+  return api('/api/semantic', { method: 'POST', body: JSON.stringify({
+    action: 'add_relationship',
+    sourceEntityId: left.id,
+    targetEntityId: right.id,
+    relationshipType: normalizeRelationshipType(suggestion.relationshipType, suggestion.content),
+    confidence: suggestion.confidence || 0.8,
+    source: 'assistant'
+  }) });
 }
 
 function suggestMemoryActions(message) {
   var text = message.trim();
   var suggestions = [];
+  var seenEntities = {};
+  function addEntity(name, entityType, content, reason) {
+    name = cleanEntityName(name);
+    if (!name || seenEntities[name.toLowerCase()]) return;
+    seenEntities[name.toLowerCase()] = true;
+    suggestions.push({ type: 'entity', entityType: normalizeEntityType(entityType || inferEntityType(name, content)), name: name, content: content || name, title: 'Save entity: ' + name, reason: reason || 'Named thing mentioned.' });
+  }
+  function addRelationship(source, target, relType, content, reason) {
+    source = cleanEntityName(source); target = cleanEntityName(target);
+    if (!source || !target) return;
+    suggestions.push({
+      type: 'relationship',
+      sourceEntity: source,
+      targetEntity: target,
+      sourceEntityType: normalizeEntityType(inferEntityType(source, content)),
+      targetEntityType: normalizeEntityType(inferEntityType(target, content)),
+      relationshipType: normalizeRelationshipType(relType, content),
+      content: content || (source + ' ' + relType + ' ' + target),
+      title: 'Save relationship',
+      reason: reason || 'Relationship mentioned.'
+    });
+  }
   if (/\b(my name is|i am|i'm|i work|i build|my project|i use|i used|i made|i created|i wrote|i develop|i code in)\b/i.test(text))
     suggestions.push({ type: 'memory', memoryType: 'FACT', title: 'Save fact', content: text, importance: 0.85, reason: 'Stable personal or project fact.' });
   if (/\b(i prefer|i like|i want|i hate|i don't like|my favorite)\b/i.test(text))
     suggestions.push({ type: 'memory', memoryType: 'PREFERENCE', title: 'Save preference', content: text, importance: 0.8, reason: 'Preference for personalization.' });
+  extractKnownEntities(text).forEach(function(entity) { addEntity(entity.name, entity.type, entity.description, entity.reason); });
+  extractKnownRelationships(text).forEach(function(rel) {
+    addEntity(rel.source, inferEntityType(rel.source, text), rel.source + ' mentioned in conversation.', 'Relationship endpoint.');
+    addEntity(rel.target, inferEntityType(rel.target, text), rel.target + ' mentioned in conversation.', 'Relationship endpoint.');
+    addRelationship(rel.source, rel.target, rel.type, rel.content || text, rel.reason);
+  });
   var relPatterns = text.match(/(\w+)(?:'s|s')?\s+(brother|sister|mother|father|son|daughter|cousin|spouse|friend|wife|husband|uncle|aunt)\s+(?:is\s+)?(\w+)/gi);
   if (relPatterns) {
-    var seenEntities = {};
     relPatterns.forEach(function(match) {
       var parts = match.match(/(\w+)(?:'s|s')?\s+(brother|sister|mother|father|son|daughter|cousin|spouse|friend|wife|husband|uncle|aunt)\s+(?:is\s+)?(\w+)/i);
       if (parts) {
         var left = parts[1], rel = parts[2].toUpperCase() + '_OF', right = parts[3];
-        if (!seenEntities[left]) { suggestions.push({ type: 'entity', entityType: 'PERSON', name: left, content: left, title: 'Save entity: ' + left, reason: 'Person mentioned.' }); seenEntities[left] = true; }
-        if (!seenEntities[right]) { suggestions.push({ type: 'entity', entityType: 'PERSON', name: right, content: right, title: 'Save entity: ' + right, reason: 'Person mentioned.' }); seenEntities[right] = true; }
-        suggestions.push({ type: 'relationship', sourceEntity: left, targetEntity: right, relationshipType: rel, content: match, title: 'Save relationship', reason: left + ' ' + rel.replace(/_/g, ' ').toLowerCase() + ' ' + right });
+        addEntity(left, 'PERSON', left, 'Person mentioned.');
+        addEntity(right, 'PERSON', right, 'Person mentioned.');
+        addRelationship(left, right, rel, match, left + ' ' + rel.replace(/_/g, ' ').toLowerCase() + ' ' + right);
       }
     });
   }
@@ -796,7 +865,7 @@ function suggestMemoryActions(message) {
     suggestions.push({ type: 'source', sourceType: inferSourceType(text), title: 'Store as source', content: text, reason: 'Technical text.' });
   if (suggestions.length === 0 && text.length > 20)
     suggestions.push({ type: 'memory', memoryType: 'CONVERSATION', title: 'Save note', content: text, reason: 'Conversational context.' });
-  return suggestions.slice(0, 10);
+  return uniqueSuggestions(normalizeMemorySuggestions(suggestions)).slice(0, 18);
 }
 
 function inferChatMode(message) {
@@ -812,7 +881,128 @@ function inferSourceType(text) {
   if (lower.includes('function') || lower.includes('class') || lower.includes('import')) return 'code';
   if (lower.includes('error') || lower.includes('exception') || lower.includes('stack')) return 'log';
   if (lower.includes('# ') || lower.includes('## ')) return 'markdown';
+  if (lower.includes('database_url') || lower.includes('api_key') || lower.includes('config')) return 'config';
+  if (lower.includes('architecture') || lower.includes('workflow') || lower.includes('design')) return 'document';
   return 'note';
+}
+
+function normalizeSuggestionType(type) {
+  var value = String(type || 'memory').toLowerCase().trim();
+  if (['memory', 'source', 'entity', 'relationship', 'event'].includes(value)) return value;
+  if (value.includes('graph') || value.includes('edge')) return 'relationship';
+  if (value.includes('node')) return 'entity';
+  if (value.includes('document') || value.includes('chunk')) return 'source';
+  return 'memory';
+}
+
+function normalizeMemoryType(type) {
+  var value = String(type || 'CONVERSATION').toUpperCase().replace(/[^A-Z_]/g, '');
+  var allowed = ['FACT', 'PREFERENCE', 'DECISION', 'CONVERSATION', 'FEEDBACK', 'WORKING', 'SEMANTIC', 'EPISODIC', 'PROCEDURAL'];
+  return allowed.includes(value) ? value : 'CONVERSATION';
+}
+
+function normalizeSourceType(type, content) {
+  var value = String(type || '').toLowerCase().replace(/[^a-z_]/g, '');
+  var allowed = ['document', 'code', 'log', 'conversation', 'note', 'markdown', 'config'];
+  return allowed.includes(value) ? value : inferSourceType(content || '');
+}
+
+function normalizeEntityType(type) {
+  var value = String(type || 'CONCEPT').toUpperCase().replace(/[^A-Z_]/g, '');
+  var allowed = ['PERSON', 'PROJECT', 'CONCEPT', 'SERVICE', 'DATABASE', 'MODEL'];
+  if (value === 'TOOL' || value === 'FRAMEWORK' || value === 'LANGUAGE' || value === 'API') return 'SERVICE';
+  return allowed.includes(value) ? value : 'CONCEPT';
+}
+
+function normalizeRelationshipType(type, content) {
+  var value = String(type || '').toUpperCase().replace(/[^A-Z_]/g, '');
+  var allowed = ['BROTHER_OF', 'SISTER_OF', 'MOTHER_OF', 'FATHER_OF', 'SON_OF', 'DAUGHTER_OF', 'COUSIN_OF', 'SPOUSE_OF', 'FRIEND_OF', 'WORKS_AT', 'USES', 'BUILT_WITH', 'CREATED_BY', 'OWNS', 'MANAGES', 'DEPENDS_ON', 'COMBINES', 'STORES_IN', 'RETRIEVES_FROM', 'RANKS_WITH', 'FORMATS_FOR', 'RELATED_TO'];
+  if (allowed.includes(value)) return value;
+  var lower = String(content || '').toLowerCase();
+  if (lower.includes('built with') || lower.includes('using java') || lower.includes('uses java')) return 'BUILT_WITH';
+  if (lower.includes('uses') || lower.includes('use ')) return 'USES';
+  if (lower.includes('depends')) return 'DEPENDS_ON';
+  if (lower.includes('stores')) return 'STORES_IN';
+  if (lower.includes('retrieves')) return 'RETRIEVES_FROM';
+  return 'RELATED_TO';
+}
+
+function normalizeEventType(type, content) {
+  var value = String(type || '').toUpperCase().replace(/[^A-Z_]/g, '');
+  var allowed = ['USER_TIMELINE', 'PROJECT_MILESTONE', 'DEPLOYMENT', 'INCIDENT', 'ASSISTANT_MEMORY'];
+  if (allowed.includes(value)) return value;
+  var lower = String(content || '').toLowerCase();
+  if (lower.includes('deployed') || lower.includes('released') || lower.includes('launched')) return 'DEPLOYMENT';
+  if (lower.includes('broke') || lower.includes('incident') || lower.includes('failed')) return 'INCIDENT';
+  if (lower.includes('decided') || lower.includes('changed') || lower.includes('started')) return 'PROJECT_MILESTONE';
+  return 'USER_TIMELINE';
+}
+
+function cleanSuggestionContent(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function cleanEntityName(value) {
+  return String(value || '').replace(/^[\s"'`]+|[\s"'`.,:;!?]+$/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function inferEntityType(name, content) {
+  var value = (String(name || '') + ' ' + String(content || '')).toLowerCase();
+  if (!name) return 'CONCEPT';
+  if (/cloudqueryx|project|runtime|engine|platform/.test(value) && /cloudqueryx|project/.test(value)) return 'PROJECT';
+  if (/postgres|pgvector|supabase|database|rds|neon|mysql|redis/.test(value)) return 'DATABASE';
+  if (/openai|claude|gemini|llm|model|assistant|gpt/.test(value)) return 'MODEL';
+  if (/api|server|service|runtime|engine|store|graph|frontend|backend|java|react|docker|render|vercel/.test(value)) return 'SERVICE';
+  if (/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}$/.test(String(name || ''))) return 'PERSON';
+  return 'CONCEPT';
+}
+
+function extractKnownEntities(text) {
+  var lower = text.toLowerCase();
+  var specs = [
+    ['CloudQueryX', 'PROJECT', 'Provider-neutral context runtime project.'],
+    ['Context Runtime', 'SERVICE', 'Service layer that plans and builds LLM context.'],
+    ['Memory Engine', 'SERVICE', 'Subsystem that stores and recalls durable memories.'],
+    ['Source Store', 'SERVICE', 'Subsystem that stores and chunks source text.'],
+    ['Knowledge Graph', 'SERVICE', 'Graph layer for entities and relationships.'],
+    ['Event Store', 'SERVICE', 'Timeline layer for changes, actions, and incidents.'],
+    ['Java API Server', 'SERVICE', 'Backend API layer for CloudQueryX.'],
+    ['Website UI', 'SERVICE', 'Browser interface for the CloudQueryX demo.'],
+    ['Supabase PostgreSQL', 'DATABASE', 'Persistent database backend.'],
+    ['PostgreSQL', 'DATABASE', 'Relational database backend.'],
+    ['pgvector', 'DATABASE', 'PostgreSQL vector search extension.'],
+    ['OpenAI', 'MODEL', 'LLM provider used by the demo assistant.'],
+    ['LLM', 'MODEL', 'Language model that consumes CloudQueryX context bundles.']
+  ];
+  return specs.filter(function(spec) { return lower.includes(spec[0].toLowerCase()); })
+    .map(function(spec) { return { name: spec[0], type: spec[1], description: spec[2], reason: 'Named architecture component mentioned.' }; });
+}
+
+function extractKnownRelationships(text) {
+  var lower = text.toLowerCase();
+  var rels = [];
+  function has(a, b) { return lower.includes(a.toLowerCase()) && lower.includes(b.toLowerCase()); }
+  if (has('CloudQueryX', 'Supabase')) rels.push({ source: 'CloudQueryX', target: 'Supabase PostgreSQL', type: 'USES', reason: 'Architecture storage relationship.', content: text });
+  if (has('CloudQueryX', 'PostgreSQL')) rels.push({ source: 'CloudQueryX', target: 'PostgreSQL', type: 'USES', reason: 'Database usage relationship.', content: text });
+  if (has('CloudQueryX', 'pgvector')) rels.push({ source: 'CloudQueryX', target: 'pgvector', type: 'USES', reason: 'Vector retrieval relationship.', content: text });
+  if (has('Context Runtime', 'Memory Engine')) rels.push({ source: 'Context Runtime', target: 'Memory Engine', type: 'COMBINES', reason: 'Runtime combines memory recall.', content: text });
+  if (has('Context Runtime', 'Source')) rels.push({ source: 'Context Runtime', target: 'Source Store', type: 'COMBINES', reason: 'Runtime combines source chunks.', content: text });
+  if (has('Context Runtime', 'Knowledge Graph') || has('Context Runtime', 'graph')) rels.push({ source: 'Context Runtime', target: 'Knowledge Graph', type: 'COMBINES', reason: 'Runtime combines graph context.', content: text });
+  if (has('Context Runtime', 'Event')) rels.push({ source: 'Context Runtime', target: 'Event Store', type: 'COMBINES', reason: 'Runtime combines event freshness.', content: text });
+  if (has('Java API Server', 'Context Runtime')) rels.push({ source: 'Java API Server', target: 'Context Runtime', type: 'USES', reason: 'API calls runtime services.', content: text });
+  if (has('Website UI', 'Java API Server')) rels.push({ source: 'Website UI', target: 'Java API Server', type: 'USES', reason: 'Frontend sends API requests.', content: text });
+  if (has('CloudQueryX', 'OpenAI')) rels.push({ source: 'CloudQueryX', target: 'OpenAI', type: 'FORMATS_FOR', reason: 'Demo formats context for the LLM.', content: text });
+  return rels;
+}
+
+function uniqueSuggestions(items) {
+  var seen = {};
+  return (items || []).filter(function(item) {
+    var key = [item.type, item.memoryType || '', item.entityType || '', item.name || '', item.sourceEntity || '', item.targetEntity || '', item.relationshipType || '', item.content || ''].join('|').toLowerCase();
+    if (seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
